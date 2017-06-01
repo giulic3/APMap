@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">APMap</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="title_activity_maps">Map</string>
+
+    <string name="title_location_permission">Request location permission</string>
+    <string name="text_location_permission">Permission is needed to display your position</string>
+    <string name="ok">Accept</string>
+
+</resources>
