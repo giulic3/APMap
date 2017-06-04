@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.constraint.ConstraintLayout
+<android.support.design.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -9,21 +9,50 @@
     tools:layout_editor_absoluteY="81dp"
     tools:layout_editor_absoluteX="0dp">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Hello World!"
-        tools:layout_editor_absoluteY="248dp"
-        tools:layout_editor_absoluteX="154dp"/>
 
 
     <fragment
         android:id="@+id/map"
         class="com.google.android.gms.maps.MapFragment"
-        android:layout_width="138dp"
-        android:layout_height="495dp"
-        tools:layout_editor_absoluteY="8dp"
-        tools:layout_editor_absoluteX="8dp"/>
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"></fragment>
 
+<!--
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
 
-</android.support.constraint.ConstraintLayout>
+    </ScrollView>
+-->
+    <android.support.v4.widget.NestedScrollView
+        android:id="@+id/ap_bottom_sheet"
+        android:layout_width="match_parent"
+        android:layout_height="250dp"
+        android:clipToPadding="true"
+        android:background="@android:color/holo_blue_bright"
+        app:layout_behavior="android.support.design.widget.BottomSheetBehavior" >
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="ciao"
+                android:textSize="16sp"
+                android:textAllCaps="true"
+                android:padding="16dp"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="bella"
+                android:padding="16dp"
+                android:textSize="16sp"/>
+
+        </LinearLayout>
+    </android.support.v4.widget.NestedScrollView>
+
+</android.support.design.widget.CoordinatorLayout>
