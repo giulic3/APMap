@@ -41,6 +41,8 @@ import com.google.android.gms.maps.model.MarkerOptions;
 *
 *
 * */
+//TODO: QUALCOSA NON FUNZIONA QUANDO SI ACCENDE E SPEGNE L'EMULATORE
+
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, LocationListener,
         ConnectionCallbacks, OnConnectionFailedListener {
@@ -155,12 +157,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
         if (checkLocationPermission()) {
-            mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
 
-            LatLng latLng = new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude());
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15));
+            //in onConnected() non c'è abbastanza tempo per beccare la location, spostare altrove. va bene usare
+            //locationrequestupdates invece con getLastLocation c'è il rischio di beccare null di ritorno!
+            //i telefoni lenti non vanno, quelli veloci sì
+            // rivedere tutta la logica TODO
+           // mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+
+            //possibile che la mLastLocation sia null
+            //LatLng latLng = new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude());
+
+            //mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15));
+            Log.d("DEBUG", "ok2");
 
             LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, locationRequest, this);
+            Log.d("DEBUG", "ok3");
 
         }
     }
@@ -227,6 +238,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         else {
             mMap.setMyLocationEnabled(true);
         }
+
         setUpMap();
     }
 
@@ -336,7 +348,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         }
         /* means permission was granted during installation */
-        else return true;
+
+        else {
+            Log.d("DEBUG", "api<23 in checkPermission()");
+            return true;
+        }
     }
 
     /* this callback handles the user answers to the location request */
