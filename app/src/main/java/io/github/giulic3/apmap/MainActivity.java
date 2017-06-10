@@ -1,23 +1,21 @@
 package io.github.giulic3.apmap;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
-import android.location.Geocoder;
 import android.location.Location;
 
 import android.support.design.widget.BottomSheetBehavior;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
-import android.support.v4.widget.NestedScrollView;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
-import android.widget.Button;
 import android.widget.Toast;
 
+import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks;
 import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
 import com.google.android.gms.location.LocationRequest;
@@ -30,26 +28,19 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
-import com.google.android.gms.maps.model.BitmapDescriptor;
-import com.google.android.gms.maps.model.BitmapDescriptorFactory;
-import com.google.android.gms.maps.model.CameraPosition;
+
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-
-/*
-*
-*
-* */
-//TODO: QUALCOSA NON FUNZIONA QUANDO SI ACCENDE E SPEGNE L'EMULATORE
+import static com.google.android.gms.common.ConnectionResult.SERVICE_MISSING;
+import static com.google.android.gms.common.ConnectionResult.NETWORK_ERROR;
+import static com.google.android.gms.common.ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED;
 
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, LocationListener,
         ConnectionCallbacks, OnConnectionFailedListener {
 
     private GoogleMap mMap;
-    private static final LatLng BOLOGNA_POINT = new LatLng(44.496781, 11.356387);
-
 
     private Location mLastLocation;
     private double mLastLatitude;
@@ -59,7 +50,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private GoogleApiClient mGoogleApiClient;
     private LocationRequest locationRequest;
-
 
     private BottomSheetBehavior mBottomSheetBehavior1;
 
@@ -71,21 +61,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        getLocation();
-        if (mMap == null) {
-            MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
-            mapFragment.getMapAsync(this);
-        }
-
-
-    }
-
-
-    private void getLocation(){
-
-        Log.d("DEBUG", "getLocation()");
-
-
 
         // Create an instance of GoogleAPIClient.
         if (mGoogleApiClient == null) {
@@ -96,16 +71,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     .build();
         }
 
+        //setup mapfragment
+        if (mMap == null) {
+            MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
+            mapFragment.getMapAsync(this);
+        }
+
+
+        //startService(new Intent(this, ApService.class));
     }
 
+
+    @Override
     protected void onStart() {
 
         Log.d("DEBUG", "onStart()");
+
         if (mGoogleApiClient != null)
             mGoogleApiClient.connect();
         super.onStart();
     }
 
+    @Override
     protected void onStop() {
 
         Log.d("DEBUG", "onStop()");
@@ -123,19 +110,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         super.onResume();
 
+        //TODO È NECESSARIO?
         /* ad ogni ricaricamento dell'activity, controllo le permission (che sono modificabili dai settings)*/
-        /*
-        if (checkLocationPermission()) {
-            if (ContextCompat.checkSelfPermission(this,
-                    Manifest.permission.ACCESS_FINE_LOCATION)
-                    == PackageManager.PERMISSION_GRANTED) {
+        // la prima volta che chiamo onResume() è un problema perché non so se verrà chiamata prima questa o la onConnected
 
-                if (mGoogleApiClient != null)
-                    LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, locationRequest, this);
-
-            }
-        }
-        */
     }
 
 
@@ -159,19 +137,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (checkLocationPermission()) {
 
             //in onConnected() non c'è abbastanza tempo per beccare la location, spostare altrove. va bene usare
-            //locationrequestupdates invece con getLastLocation c'è il rischio di beccare null di ritorno!
-            //i telefoni lenti non vanno, quelli veloci sì
-            // rivedere tutta la logica TODO
+            //locationrequestupdates, invece con getLastLocation c'è il rischio di beccare null di ritorno!
            // mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-
             //possibile che la mLastLocation sia null
             //LatLng latLng = new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude());
-
             //mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15));
-            Log.d("DEBUG", "ok2");
 
             LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, locationRequest, this);
-            Log.d("DEBUG", "ok3");
 
         }
     }
@@ -183,17 +155,34 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Log.d("DEBUG", "onConnectionSuspended()");
     }
 
-    /* starts as callback when phone can't connect to GoogleApiServices, for example, no GoogleServices?*/
+    /* starts as callback when phone can't connect to GoogleApiServices, for example, no GoogleServices are available*/
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
-
+        // TODO: ADD CASES (see ConnectionResult reference)
+        // il problema sarà testarlo su un real device adesso
         Log.d("DEBUG", "onConnectionFailed()");
 
-    }
+        int errorCode = connectionResult.getErrorCode();
+        switch (errorCode) {
+            case SERVICE_MISSING: {
+                GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
+                googleApiAvailability.getErrorDialog(this, SERVICE_MISSING, 2401).show();
+                // come usare da qua startActiviyForResult per risolvere il problema?
+            }
+            case NETWORK_ERROR: {
+                // to be implemented
+            }
 
-    // TODO: fill in mettendo dei setting onesti
-    // used for map settings (when displayed at first)
-    // es. voglio mostrare la mappa con la mia locazione
+            case SERVICE_VERSION_UPDATE_REQUIRED: {
+                GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
+                googleApiAvailability.getErrorDialog(this, SERVICE_VERSION_UPDATE_REQUIRED, 2402).show();
+            }
+            default: {
+
+            }
+
+        }
+    }
 
     /* this method contains all the commands to customize the map */
     private void setUpMap() {
@@ -222,24 +211,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onMapReady(GoogleMap googleMap) {
 
         Log.d("DEBUG", "onMapReady()");
-        mMap = googleMap;
-        //Initialize Google Play Services
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            if (ContextCompat.checkSelfPermission(this,
-                    Manifest.permission.ACCESS_FINE_LOCATION)
-                    == PackageManager.PERMISSION_GRANTED) {
-                //Location Permission already granted
-                mMap.setMyLocationEnabled(true);
-            }
-            else {
-                checkLocationPermission();
-            }
-        }
-        else {
-            mMap.setMyLocationEnabled(true);
-        }
 
+        mMap = googleMap;
+
+        // in realtà se la richiesta è stata accolta, setMyLocationEnabled è già a true. (dove tenerlo?)
+        //if (checkLocationPermission()) mMap.setMyLocationEnabled(true);
         setUpMap();
+
     }
 
 
@@ -247,20 +225,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onLocationChanged(Location location) {
 
-
             Log.d("DEBUG", "onLocationChanged()");
+
             Toast.makeText(this, "location :"+location.getLatitude()+" , "+location.getLongitude(), Toast.LENGTH_LONG).show();
             mLastLocation = location;
 
             LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
 
+        /*
             mMap.addMarker(new MarkerOptions().position(latLng).title("CurrentPosition")
             .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA))); //marker del colore che si vuole
-
+        */
             // move camera to current position and focus
             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15));
 
-
+/*
             mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
                 @Override
                 public boolean onMarkerClick(Marker marker) {
@@ -285,33 +264,30 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     return false;
                 }
             });
-
+*/
     }
 
 
 
 
-
+//TODO: ma installando tramite apk non vengono richiesti i permessi di installazione per api < 23?
+    // solo installando da play store? e io come lo testo?
 
 // MECCANISMO PER RICHIEDERE PERMESSI DI LOCALIZZAZIONE A RUNTIME
     public static final int MY_PERMISSIONS_REQUEST_LOCATION = 99;
-
-    // run time permission checking only form marshmallow  on
 
     // if access_fine_location is granted, automatically it is granted coarse_loc too
     public boolean checkLocationPermission() {
 
         Log.d("DEBUG", "checkLocationPermission()");
-        // for api level greater than 23 (marshmallow) - with runtime permissions, for api level
-        // 22 and lower checking runtime permissions doesn't make sense
-        // perché tanto se non si accetta tutto all'inizio l'app non viene installata
+
+        /* checking permissions at runtime only for api level greater or equal than 23*/
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
             /* if permission is currently disabled */
-            if (ContextCompat.checkSelfPermission(this,
-                    Manifest.permission.ACCESS_FINE_LOCATION)
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                     != PackageManager.PERMISSION_GRANTED) {
 
-                /* this method returns true if the user has previously selected "deny permission",
+                /* this method returns true if the user has previously selected "deny permission",(or has disabled from settings)
                 * in this case we show an explanation dialog */
                 if (ActivityCompat.shouldShowRequestPermissionRationale(this,
                         Manifest.permission.ACCESS_FINE_LOCATION)) {
@@ -332,7 +308,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             })
                             .create()
                             .show();
-
 
                 } else {
 
@@ -367,12 +342,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 
                     /* permission was granted, so I can do the location-related task */
-                    if (ContextCompat.checkSelfPermission(this,
-                            Manifest.permission.ACCESS_FINE_LOCATION)
+                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                             == PackageManager.PERMISSION_GRANTED) {
 
-                        if (mGoogleApiClient != null) //anche locationRequest dev'essere valido!
-                        {
+                        if (mGoogleApiClient != null) {
+
+                            /* this adds the button on the top right of the map and the focus functionality */
                             mMap.setMyLocationEnabled(true);
                             LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, locationRequest, this);
                         }
