@@ -1,4 +1,4 @@
-package io.github.giulic3.apmap;
+package io.github.giulic3.apmap.services;
 
 import android.app.Service;
 import android.content.BroadcastReceiver;

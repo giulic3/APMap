@@ -1,11 +1,18 @@
-package io.github.giulic3.apmap;
+package io.github.giulic3.apmap.activities;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentSender;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.location.Location;
 
+import android.os.IBinder;
+import android.renderscript.ScriptGroup;
 import android.support.design.widget.BottomSheetBehavior;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -18,41 +25,63 @@ import android.widget.Toast;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks;
 import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
+import com.google.android.gms.common.api.PendingResult;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.maps.CameraUpdate;
+import com.google.android.gms.location.LocationSettingsRequest;
+import com.google.android.gms.location.LocationSettingsResult;
+import com.google.android.gms.location.LocationSettingsStates;
+import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
 
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.Marker;
-import com.google.android.gms.maps.model.MarkerOptions;
+
+import io.github.giulic3.apmap.R;
+import io.github.giulic3.apmap.services.LocationService;
+
 import static com.google.android.gms.common.ConnectionResult.SERVICE_MISSING;
 import static com.google.android.gms.common.ConnectionResult.NETWORK_ERROR;
 import static com.google.android.gms.common.ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED;
 
+// this activity has the following responsibilities used as a View/Controller:
+// - inflates layout(s)
+// - starts and communicates with services
+// - handles events (scan)
+// - handle permissions (can do that only in activities or fragments)
+// - setup map
 
-public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, LocationListener,
-        ConnectionCallbacks, OnConnectionFailedListener {
+
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private GoogleMap mMap;
 
-    private Location mLastLocation;
-    private double mLastLatitude;
-    private double mLastLongitude;
-    private LatLng mLastPosition;
+    //private BottomSheetBehavior mBottomSheetBehavior1;
 
+    // TODO: REFACTOR
+    private LocationService mLocationService;
 
-    private GoogleApiClient mGoogleApiClient;
-    private LocationRequest locationRequest;
+    private ServiceConnection mLocationConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            mLocationService = ((LocationService.LocalBinder)service).getService();
+            Toast.makeText(MainActivity.this, "onServiceConnected()", Toast.LENGTH_LONG).show();
 
-    private BottomSheetBehavior mBottomSheetBehavior1;
+        }
 
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            mLocationService = null;
+
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,24 +90,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
-        // Create an instance of GoogleAPIClient.
-        if (mGoogleApiClient == null) {
-            mGoogleApiClient = new GoogleApiClient.Builder(this)
-                    .addConnectionCallbacks(this)
-                    .addOnConnectionFailedListener(this)
-                    .addApi(LocationServices.API)
-                    .build();
-        }
-
         //setup mapfragment
         if (mMap == null) {
             MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
             mapFragment.getMapAsync(this);
         }
 
+        // starts service only if location is active
+        if (checkLocationPermission()) {
 
-        //startService(new Intent(this, ApService.class));
+            bindService(new Intent(this, LocationService.class), mLocationConnection, Context.BIND_AUTO_CREATE);
+            startService(new Intent(this, LocationService.class));
+        }
     }
 
 
@@ -87,8 +110,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         Log.d("DEBUG", "onStart()");
 
-        if (mGoogleApiClient != null)
-            mGoogleApiClient.connect();
         super.onStart();
     }
 
@@ -97,8 +118,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         Log.d("DEBUG", "onStop()");
 
-        if (mGoogleApiClient != null)
-            mGoogleApiClient.disconnect();
         super.onStop();
     }
 
@@ -109,80 +128,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Log.d("DEBUG", "onResume()");
 
         super.onResume();
-
-        //TODO È NECESSARIO?
-        /* ad ogni ricaricamento dell'activity, controllo le permission (che sono modificabili dai settings)*/
+        // ad ogni ricaricamento dell'activity, controllo le permission (che sono modificabili dai settings)
         // la prima volta che chiamo onResume() è un problema perché non so se verrà chiamata prima questa o la onConnected
 
-    }
-
-
-    /* starts as callback when the phone connects to a GoogleApiClient */
-    @Override
-    public void onConnected(Bundle connectionHint) {
-
-        Log.d("DEBUG", "onConnected()");
-
-        /* a locationRequest object must be prepared before asking for permission */
-        locationRequest = LocationRequest.create();
-        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-
-        /* these determines how often onLocationChanged() will be called,
-         time is in ms, aka 30 seconds */ //TODO: set time according to common sense
-        locationRequest.setInterval(30000);
-        /* 30 seconds*/
-        locationRequest.setFastestInterval(30000);
-
-
-        if (checkLocationPermission()) {
-
-            //in onConnected() non c'è abbastanza tempo per beccare la location, spostare altrove. va bene usare
-            //locationrequestupdates, invece con getLastLocation c'è il rischio di beccare null di ritorno!
-           // mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-            //possibile che la mLastLocation sia null
-            //LatLng latLng = new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude());
-            //mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15));
-
-            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, locationRequest, this);
-
-        }
-    }
-
-    /* starts as callback when connection between GoogleApi and phone is suspended */
-    @Override
-    public void onConnectionSuspended(int i) {
-
-        Log.d("DEBUG", "onConnectionSuspended()");
-    }
-
-    /* starts as callback when phone can't connect to GoogleApiServices, for example, no GoogleServices are available*/
-    @Override
-    public void onConnectionFailed(ConnectionResult connectionResult) {
-        // TODO: ADD CASES (see ConnectionResult reference)
-        // il problema sarà testarlo su un real device adesso
-        Log.d("DEBUG", "onConnectionFailed()");
-
-        int errorCode = connectionResult.getErrorCode();
-        switch (errorCode) {
-            case SERVICE_MISSING: {
-                GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
-                googleApiAvailability.getErrorDialog(this, SERVICE_MISSING, 2401).show();
-                // come usare da qua startActiviyForResult per risolvere il problema?
-            }
-            case NETWORK_ERROR: {
-                // to be implemented
-            }
-
-            case SERVICE_VERSION_UPDATE_REQUIRED: {
-                GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
-                googleApiAvailability.getErrorDialog(this, SERVICE_VERSION_UPDATE_REQUIRED, 2402).show();
-            }
-            default: {
-
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            // if permission is currently disabled
+            if ((ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED) && (mMap != null)) {
+                mMap.setMyLocationEnabled(true);
             }
 
         }
     }
+
+
 
     /* this method contains all the commands to customize the map */
     private void setUpMap() {
@@ -203,7 +162,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         */
 
 
-
     }
 
     /* callback interface for when the map is ready to be used */
@@ -213,15 +171,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Log.d("DEBUG", "onMapReady()");
 
         mMap = googleMap;
-
-        // in realtà se la richiesta è stata accolta, setMyLocationEnabled è già a true. (dove tenerlo?)
-        //if (checkLocationPermission()) mMap.setMyLocationEnabled(true);
         setUpMap();
 
     }
 
 
-    /* this method starts as callback when the LocationListener listens for a change in the current location */
+    // this method starts as callback when the LocationListener listens for a change in the current location
+    /*
     @Override
     public void onLocationChanged(Location location) {
 
@@ -232,10 +188,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
 
-        /*
-            mMap.addMarker(new MarkerOptions().position(latLng).title("CurrentPosition")
-            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA))); //marker del colore che si vuole
-        */
             // move camera to current position and focus
             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15));
 
@@ -265,7 +217,78 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 }
             });
 */
+//    }
+
+    /*
+    protected static final int REQUEST_CHECK_SETTINGS = 0x1;
+
+    // this method creates a Location Settings Request specifying all kinds of requests that will be asked
+
+public void requestLocationSettings(){
+
+    LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
+            .addLocationRequest(mLocationRequest); //currently only high priority, give chance to choose
+
+    PendingResult<LocationSettingsResult> result =
+            LocationServices.SettingsApi.checkLocationSettings(mGoogleApiClient, builder.build());
+
+    result.setResultCallback(new ResultCallback<LocationSettingsResult>() {
+        @Override
+        public void onResult(LocationSettingsResult result) {
+            final Status status = result.getStatus();
+            final LocationSettingsStates locationSettingsStates = result.getLocationSettingsStates();
+            switch (status.getStatusCode()) {
+                case LocationSettingsStatusCodes.SUCCESS:
+                    // All location settings are satisfied. The client can initialize location
+                    // requests here.
+                 //...
+                    break;
+                case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
+                    // Location settings are not satisfied. But could be fixed by showing the user
+                    // a dialog.
+                    initializeLocationRequests();
+                    try {
+                        // Show the dialog by calling startResolutionForResult(),
+                        // and check the result in onActivityResult().
+                        status.startResolutionForResult(
+                                MainActivity.this,
+                                REQUEST_CHECK_SETTINGS);
+                    } catch (IntentSender.SendIntentException e) {
+                        // Ignore the error.
+                    }
+                    break;
+                case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
+                    // Location settings are not satisfied. However, we have no way to fix the
+                    // settings so we won't show the dialog.
+                    //...
+                    break;
+            }
+        }
+    });
+}
+*/
+    /*
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+        final LocationSettingsStates states = LocationSettingsStates.fromIntent(intent);
+        switch (requestCode) {
+            case REQUEST_CHECK_SETTINGS:
+                switch (resultCode) {
+                    case Activity.RESULT_OK:
+                        // All required changes were successfully made
+                        initializeLocationRequests();
+                        break;
+                    case Activity.RESULT_CANCELED:
+                        // The user was asked to change settings, but chose not to
+                        break;
+                    default:
+                        break;
+                }
+                break;
+        }
     }
+*/
+
 
 
 
@@ -281,7 +304,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         Log.d("DEBUG", "checkLocationPermission()");
 
-        /* checking permissions at runtime only for api level greater or equal than 23*/
+        // checking permissions at runtime only for api level greater or equal than 23
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
             /* if permission is currently disabled */
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
@@ -292,8 +315,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 if (ActivityCompat.shouldShowRequestPermissionRationale(this,
                         Manifest.permission.ACCESS_FINE_LOCATION)) {
 
-                    /* Show an explanation to the user *asynchronously*  After the user
-                     sees the explanation, try again to request the permission.*/
+                    // show explanation to the user *asynchronously*  After the user
+                    // sees the explanation, try again to request the permission.
                     new AlertDialog.Builder(this)
                             .setTitle(R.string.title_location_permission)
                             .setMessage(R.string.text_location_permission)
@@ -311,7 +334,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 } else {
 
-                    /* this is the first time requesting the permission, I ask without explanations */
+                    // this is the first time requesting the permission, I ask without explanations
                     ActivityCompat.requestPermissions(this,
                             new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
                             MY_PERMISSIONS_REQUEST_LOCATION);
@@ -322,7 +345,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
 
         }
-        /* means permission was granted during installation */
+        // means permission was granted during installation
 
         else {
             Log.d("DEBUG", "api<23 in checkPermission()");
@@ -330,14 +353,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    /* this callback handles the user answers to the location request */
+    // this callback handles the user answers to the location request
     @Override
     public void onRequestPermissionsResult(int requestCode,
                                            String permissions[], int[] grantResults) {
 
         switch (requestCode) {
             case MY_PERMISSIONS_REQUEST_LOCATION: {
-                /* if request is cancelled, the result arrays are empty */
+                // if request is cancelled, the result arrays are empty
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 
@@ -345,21 +368,26 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                             == PackageManager.PERMISSION_GRANTED) {
 
+                        /*
                         if (mGoogleApiClient != null) {
 
-                            /* this adds the button on the top right of the map and the focus functionality */
+                            // this adds the button on the top right of the map and the focus functionality
                             mMap.setMyLocationEnabled(true);
                             LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, locationRequest, this);
                         }
+                        */
+                        // start service when permission is granted
+                        bindService(new Intent(this, LocationService.class), mLocationConnection, Context.BIND_AUTO_CREATE);
+                        startService(new Intent(this, LocationService.class));
 
                     }
 
                 } else {
 
-                    /* permission denied, disabling the functionality that depends on this permission.
+                    // permission denied, disabling the functionality that depends on this permission.
                     // TODO: l'app non visualizzerà più la propria posizione ma continuerà a funzionare
                     // avendo un database di ap e usando degli indirizzi per navigare la mappa
-                    */
+
                 }
                 return;
             }
