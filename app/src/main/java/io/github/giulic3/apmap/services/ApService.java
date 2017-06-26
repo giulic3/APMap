@@ -21,17 +21,17 @@ import java.util.List;
 public class ApService extends Service {
 
     private Looper mServiceLooper;
-    private ServiceHandler mServiceHandler;
+    //private ServiceHandler mServiceHandler;
     private WifiManager mWifiManager;
-    //private Scan mScan;
     private WifiReceiver mWifiReceiver;
     //private List<AccessPoint> apList; // TOOD: da definire AccessPoint come una struct privata
 
-    public ApService() {
-    }
-
     // A Handler allows you to send and process Message and Runnable objects associated with a thread's MessageQueue.
     // Handler that receives message from the thread (i dati sugli ap, da salvare nel database)
+
+    // non penso che serva. ho bisogno ddi un handler che prenda i dati della scansione, dalla onReceive faccio un
+    // sendmsg, boh?
+    /*
     private final class ServiceHandler extends Handler {
         public ServiceHandler(Looper looper) {
             super(looper);
@@ -42,7 +42,10 @@ public class ApService extends Service {
 
             try {
                 Thread.sleep(10000); //10 secondi
-                // do work
+                //do work
+                Log.d("DEBUG", "ApService: handleMessage()");
+                mWifiManager.startScan();
+
 
             } catch (InterruptedException e) {
                 // Restore interrupt status.
@@ -54,12 +57,15 @@ public class ApService extends Service {
         }
 
     }
-
+*/
     // called by the system when this service is first created
     @Override
     public void onCreate(){
+
+        Log.d("DEBUG", "ApService: onCreate()");
+        /*
         // Start up a separate thread with background priority
-        HandlerThread thread = new HandlerThread("ServiceStartArguments", Process.THREAD_PRIORITY_BACKGROUND);
+       /HandlerThread thread = new HandlerThread("ServiceStartArguments", Process.THREAD_PRIORITY_BACKGROUND);
         thread.start();
 
         // Get the HandlerThread's Looper and use it for our Handler
@@ -67,8 +73,7 @@ public class ApService extends Service {
         mServiceLooper = thread.getLooper();
         // associate creating thread to Handler
         mServiceHandler = new ServiceHandler(mServiceLooper);
-
-
+        */
 
     }
 
@@ -80,31 +85,47 @@ public class ApService extends Service {
 
     }
 
-    /* executes when someone calls startService() */
+    // executes when someone calls startService()
     @Override
     public int onStartCommand(Intent intent, int flags, int startId){
 
+        Log.d("DEBUG", "ApService: onStartCommand()");
+
         // setup broadcast receiver
-        // TODO: per ora in OnStartCommand, non so se sia meglio in onCreate, ma a logica no perché se android
-        // mi killa il service io ho bisogno che quando mi riparte venga nuovamente registrato il broadcast receiver
         mWifiReceiver = new WifiReceiver();
         // iscrivo il mio receiver ad un broadcast con evento di tipo specificato dall'intent filter passato
-        // così l'onreceive parte sul thread separato
-        registerReceiver(mWifiReceiver, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION), null, mServiceHandler);
+        // così l'onreceive parte sul thread separato ? vedi android monitor
+        //registerReceiver(mWifiReceiver, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION), null, mServiceHandler);
+        registerReceiver(mWifiReceiver, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
         mWifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
 
-        // la scansione basta lanciarla una volta, il broadcast receiver entra nell'onReceive
-        // ogni volta che si ha un nuovo risultato per la scansione
-        // quindi non c'è bisogno di lanciarla nel thread in un loop
-        mWifiManager.startScan();
 
+        new Thread(new Runnable(){
+            public void run() {
+                // TODO Auto-generated method stub
+                while(true)
+                {
+                    try {
+                        Thread.sleep(60000);
+                        //mServiceHandler.sendEmptyMessage(0);
+                        Log.d("DEBUG", "ApService: in thread startScan()");
+                        mWifiManager.startScan();
+
+                    } catch (InterruptedException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+
+                }
+
+            }
+        }).start();
 
         // For each start request, send a message to start a job and deliver the
         // start ID so we know which request we're stopping when we finish the job
-        Message msg = mServiceHandler.obtainMessage();
-        msg.arg1 = startId;
-        mServiceHandler.sendMessage(msg);
-
+       // Message msg = mServiceHandler.obtainMessage();
+        //msg.arg1 = startId;
+        //mServiceHandler.sendMessage(msg);
 
         // automatically restarts service if killed
         return START_STICKY;
@@ -117,19 +138,17 @@ public class ApService extends Service {
         throw new UnsupportedOperationException("Not yet implemented");
     }
 
-
     // con un broadcast receiver l'app viene notificata dal sistema ogni qualvolta si verifica
     // un determinato evento (per il quale il receiver si è registrato)
-    //
     class WifiReceiver extends BroadcastReceiver {
         private List<ScanResult> wifiList;
 
-        // executes when scan results are available (foreach scan ? or only the first time?)
+        // executes when scan results are available
         @Override
         public void onReceive(Context arg0, Intent arg1) {
+            Log.d("DEBUG", "ApService: onReceive()");
+
             wifiList = mWifiManager.getScanResults();
-            // a chi spedisco questi dati? devo usarli per aggiornare PRIMA il database e poi la mappa
-            // per rendere più accurata la posizione
             for (int i = 0; i < wifiList.size(); i++) {
                 Toast toast = Toast.makeText(getApplicationContext(), "SSID: " + wifiList.get(i).SSID + "\n" +
                                 "BSSID: " + wifiList.get(i).BSSID + "\n" +

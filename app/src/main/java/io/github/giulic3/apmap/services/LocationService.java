@@ -12,6 +12,7 @@ import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -31,8 +32,6 @@ import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.model.LatLng;
 
-import io.github.giulic3.apmap.activities.MainActivity;
-
 import static com.google.android.gms.common.ConnectionResult.NETWORK_ERROR;
 import static com.google.android.gms.common.ConnectionResult.SERVICE_MISSING;
 import static com.google.android.gms.common.ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED;
@@ -42,15 +41,14 @@ public class LocationService extends Service implements LocationListener,
         GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
 
     private Activity activityParameter;
-
     private Location mLastLocation;
     private LocationRequest mLocationRequest; //get locationRequest()
+    private static Context mContext;
 
     private GoogleApiClient mGoogleApiClient;
     private static final String LOGSERVICE = "LocationService";
 
     // binder given to clients (=mainActivity)
-
     private final IBinder mBinder = new LocalBinder();
 
     @Override
@@ -68,6 +66,7 @@ public class LocationService extends Service implements LocationListener,
 
         if (!mGoogleApiClient.isConnected())
             mGoogleApiClient.connect();
+
         return START_STICKY;
     }
 
@@ -80,13 +79,15 @@ public class LocationService extends Service implements LocationListener,
         return mBinder;
     }
 
-    // returns an instance of this service
+    // returns an instance of this service, which has public methods the client can call
     public class LocalBinder extends Binder {
+
         public LocationService getService() {
             return LocationService.this;
         }
+        public LocationRequest getLocationRequest() { return mLocationRequest; }
+        public GoogleApiClient getGoogleApiClient() { return mGoogleApiClient; }
     }
-
 
     private void destroyConnection() {
         if (mGoogleApiClient != null)
@@ -97,10 +98,8 @@ public class LocationService extends Service implements LocationListener,
     @Override
     public void onConnected(Bundle connectionHint) {
 
-        Log.d("DEBUG", "onConnected()");
+        Log.d("DEBUG", "LocationService: onConnected()");
 
-        //requestLocationSettings();
-        // la checklocationpermission ha senso farla prima di lanciare il service
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
 
@@ -113,7 +112,7 @@ public class LocationService extends Service implements LocationListener,
     @Override
     public void onConnectionSuspended(int i) {
 
-        Log.d("DEBUG", "onConnectionSuspended()");
+        Log.d("DEBUG", "LocationService: onConnectionSuspended()");
     }
 
     // starts as callback when phone can't connect to GoogleApiServices, e.g. no GoogleServices are available
@@ -121,7 +120,7 @@ public class LocationService extends Service implements LocationListener,
     public void onConnectionFailed(ConnectionResult connectionResult) {
         // TODO: ADD CASES (see ConnectionResult reference) and resolve activityParameter problem
         // il problema sarà testarlo su un real device adesso
-        Log.d("DEBUG", "onConnectionFailed()");
+        Log.d("DEBUG", "LocationService: onConnectionFailed()");
 
         int errorCode = connectionResult.getErrorCode();
         switch (errorCode) {
@@ -149,14 +148,13 @@ public class LocationService extends Service implements LocationListener,
     @Override
     public void onLocationChanged(Location location) {
 
-        Log.d("DEBUG", "onLocationChanged()");
-        // TODO: toast temporanei per avere un feedback, è ridicolo avere un service che aggiorna la ui
+        Log.d("DEBUG", "LocationService: onLocationChanged()");
+        // TODO: toast temporanei per avere un feedback
         Toast.makeText(this, "location :"+location.getLatitude()+" , "+location.getLongitude(), Toast.LENGTH_LONG).show();
         mLastLocation = location;
-        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-
-
-        //TODO: need to find a way to update ui now?
+        // notify activity with changed location
+        String message = "location just changed";
+        sendMessageToActivity(mLastLocation, message);
     }
 
 
@@ -167,19 +165,16 @@ public class LocationService extends Service implements LocationListener,
 
     // TODO define parameters
     private void initializeLocationRequest(){
-        Log.d("DEBUG", "initializeLocationRequest()");
-
+        Log.d("DEBUG", "LocationService: initializeLocationRequest()");
 
         // a locationRequest object must be prepared before asking for permission
         mLocationRequest = LocationRequest.create();
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-
         // these determines how often onLocationChanged() will be called,
         // time is in ms, aka 30 seconds */ //TODO: set time according to common sense
-        mLocationRequest.setInterval(30000);
+        mLocationRequest.setInterval(20000);
         // 30 seconds
         mLocationRequest.setFastestInterval(30000);
-
 
     }
 
@@ -189,7 +184,7 @@ public class LocationService extends Service implements LocationListener,
     }
 
     protected synchronized void buildGoogleApiClient() {
-        Log.d("DEBUG", "buildGoogleApiClient()");
+        Log.d("DEBUG", "LocationService: buildGoogleApiClient()");
 
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .addOnConnectionFailedListener(this)
@@ -197,6 +192,18 @@ public class LocationService extends Service implements LocationListener,
                 .addApi(LocationServices.API)
                 .build();
     }
+
+    private void sendMessageToActivity(Location l, String msg) {
+        Intent intent = new Intent("GPSLocationUpdates");
+        // You can also include some extra data.
+        intent.putExtra("Status", msg);
+        Bundle b = new Bundle();
+        b.putParcelable("Location", l);
+        intent.putExtra("Location", b);
+        LocalBroadcastManager.getInstance(LocationService.this).sendBroadcast(intent);
+    }
+
+
 
 
 }

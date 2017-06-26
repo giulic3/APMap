@@ -2,10 +2,12 @@ package io.github.giulic3.apmap.activities;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.IntentSender;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
@@ -16,6 +18,7 @@ import android.renderscript.ScriptGroup;
 import android.support.design.widget.BottomSheetBehavior;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -45,6 +48,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.LatLng;
 
 import io.github.giulic3.apmap.R;
+import io.github.giulic3.apmap.services.ApService;
 import io.github.giulic3.apmap.services.LocationService;
 
 import static com.google.android.gms.common.ConnectionResult.SERVICE_MISSING;
@@ -56,22 +60,39 @@ import static com.google.android.gms.common.ConnectionResult.SERVICE_VERSION_UPD
 // - starts and communicates with services
 // - handles events (scan)
 // - handle permissions (can do that only in activities or fragments)
-// - setup map
+// - setup (custom) map
 
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private GoogleMap mMap;
-
+    private Location mLastKnownLocation;
     //private BottomSheetBehavior mBottomSheetBehavior1;
 
-    // TODO: REFACTOR
     private LocationService mLocationService;
+    private LocationRequest mLocationRequest;
+    private GoogleApiClient mGoogleApiClient;
+    boolean isBound = false;
+    boolean isFirstUpdate = true; // true if locationChanged for the first time (patch)
 
+
+
+
+
+
+    // when to bind or unbind:
+    // If you need to interact with the service only while your activity is visible, you should bind
+    // during onStart() and unbind during onStop().
+    // If you want your activity to receive responses even while it is stopped in the background,
+    // then you can bind during onCreate() and unbind during onDestroy().
     private ServiceConnection mLocationConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             mLocationService = ((LocationService.LocalBinder)service).getService();
+            mLocationRequest = ((LocationService.LocalBinder)service).getLocationRequest();
+            mGoogleApiClient = ((LocationService.LocalBinder)service).getGoogleApiClient();
+            isBound = true;
+            requestLocationSettings();
             Toast.makeText(MainActivity.this, "onServiceConnected()", Toast.LENGTH_LONG).show();
 
         }
@@ -79,6 +100,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         @Override
         public void onServiceDisconnected(ComponentName name) {
             mLocationService = null;
+            isBound = false;
 
         }
     };
@@ -86,7 +108,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
-        Log.d("DEBUG", "onCreate()");
+        Log.d("DEBUG", "MainActivity: onCreate()");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -102,13 +124,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             bindService(new Intent(this, LocationService.class), mLocationConnection, Context.BIND_AUTO_CREATE);
             startService(new Intent(this, LocationService.class));
         }
-    }
+        startService(new Intent(this, ApService.class));
 
+        LocalBroadcastManager.getInstance(MainActivity.this).registerReceiver(
+                mLocationReceiver, new IntentFilter("GPSLocationUpdates"));
+       // LocalBroadcastManager.getInstance(MainActivity.this).registerReceiver(
+          //      mApReceiver, new IntentFilter("AccessPointsUpdates"));
+
+    }
 
     @Override
     protected void onStart() {
 
-        Log.d("DEBUG", "onStart()");
+        Log.d("DEBUG", "MainActivity: onStart()");
 
         super.onStart();
     }
@@ -116,23 +144,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onStop() {
 
-        Log.d("DEBUG", "onStop()");
+        Log.d("DEBUG", "MainActivity: onStop()");
 
         super.onStop();
+        // Unbind from the service
+        if (isBound) {
+            unbindService(mLocationConnection);
+            isBound = false;
+        }
+
+        LocalBroadcastManager.getInstance(MainActivity.this).unregisterReceiver(mLocationReceiver);
+       // LocalBroadcastManager.getInstance(MainActivity.this).unregisterReceiver(WifiReceiver);
     }
 
 
     @Override
     protected void onResume() {
 
-        Log.d("DEBUG", "onResume()");
+        Log.d("DEBUG", "MainActivity: onResume()");
 
         super.onResume();
-        // ad ogni ricaricamento dell'activity, controllo le permission (che sono modificabili dai settings)
-        // la prima volta che chiamo onResume() è un problema perché non so se verrà chiamata prima questa o la onConnected
-
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            // if permission is currently disabled
+            // if permission is currently disabled (permissions could have been disabled in settings)
             if ((ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                     == PackageManager.PERMISSION_GRANTED) && (mMap != null)) {
                 mMap.setMyLocationEnabled(true);
@@ -141,90 +174,55 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-
-
-    /* this method contains all the commands to customize the map */
+    // this method contains all the commands to customize the map
     private void setUpMap() {
 
-        Log.d("DEBUG", "setUpMap()");
+        Log.d("DEBUG", "MainActivity: setUpMap()");
+        if ((ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) && (mMap != null)) {
+            mMap.setMyLocationEnabled(true);
+        }
 
-        /*
-        CameraPosition cameraPosition = new CameraPosition.Builder()
-                .target(BOLOGNA_POINT)
-                .zoom(15)
-                .bearing(0)
-                .tilt(0)
-                .build();
-
-        // CameraUpdate != CameraPosition
-        CameraUpdate cameraUpdate = CameraUpdateFactory.newCameraPosition(cameraPosition);
-        mMap.moveCamera(cameraUpdate);
-        */
-
+    }
+    // this method extracts data from db and fill the map with aps and relative info
+    private void populateMap() {
 
     }
 
-    /* callback interface for when the map is ready to be used */
+    // callback interface for when the map is ready to be used
     @Override
     public void onMapReady(GoogleMap googleMap) {
 
-        Log.d("DEBUG", "onMapReady()");
+        Log.d("DEBUG", "MainActivity: onMapReady()");
 
         mMap = googleMap;
         setUpMap();
 
     }
 
+    private BroadcastReceiver mLocationReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            // Get extra data included in the Intent
+            String message = intent.getStringExtra("Status");
+            Bundle b = intent.getBundleExtra("Location");
+            mLastKnownLocation = (Location) b.getParcelable("Location");
 
-    // this method starts as callback when the LocationListener listens for a change in the current location
-    /*
-    @Override
-    public void onLocationChanged(Location location) {
+            if ((mLastKnownLocation != null) && (isFirstUpdate)) {
+                LatLng latLng = new LatLng(mLastKnownLocation.getLatitude(), mLastKnownLocation.getLongitude());
 
-            Log.d("DEBUG", "onLocationChanged()");
+                // move camera to current position and focus
+                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 14));
+                isFirstUpdate = false;
+            }
+        }
+    };
 
-            Toast.makeText(this, "location :"+location.getLatitude()+" , "+location.getLongitude(), Toast.LENGTH_LONG).show();
-            mLastLocation = location;
-
-            LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-
-            // move camera to current position and focus
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15));
-
-/*
-            mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
-                @Override
-                public boolean onMarkerClick(Marker marker) {
-                    if (marker.getTitle().equals("CurrentPosition")) {
-
-                        Log.d("DEBUG", "onMarkerClick()");
-
-                        View bottomSheet = findViewById(R.id.ap_bottom_sheet);
-                        mBottomSheetBehavior1 = BottomSheetBehavior.from(bottomSheet);
-
-                        if (mBottomSheetBehavior1.getState() != BottomSheetBehavior.STATE_EXPANDED) {
-                            Log.d("DEBUG", "expand bottom sheet");
-                            mBottomSheetBehavior1.setState(BottomSheetBehavior.STATE_EXPANDED);
-                        } else {
-                            mBottomSheetBehavior1.setState(BottomSheetBehavior.STATE_COLLAPSED);
-                            Log.d("DEBUG", "collapse bottom sheet");
-
-                        }
-
-                        return true;
-                    }
-                    return false;
-                }
-            });
-*/
-//    }
-
-    /*
     protected static final int REQUEST_CHECK_SETTINGS = 0x1;
 
     // this method creates a Location Settings Request specifying all kinds of requests that will be asked
-
-public void requestLocationSettings(){
+//TODO: boilerplate
+ public void requestLocationSettings(){
 
     LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
             .addLocationRequest(mLocationRequest); //currently only high priority, give chance to choose
@@ -246,7 +244,6 @@ public void requestLocationSettings(){
                 case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
                     // Location settings are not satisfied. But could be fixed by showing the user
                     // a dialog.
-                    initializeLocationRequests();
                     try {
                         // Show the dialog by calling startResolutionForResult(),
                         // and check the result in onActivityResult().
@@ -266,8 +263,7 @@ public void requestLocationSettings(){
         }
     });
 }
-*/
-    /*
+    //TODO: boilerplate
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
         final LocationSettingsStates states = LocationSettingsStates.fromIntent(intent);
@@ -276,7 +272,7 @@ public void requestLocationSettings(){
                 switch (resultCode) {
                     case Activity.RESULT_OK:
                         // All required changes were successfully made
-                        initializeLocationRequests();
+                        // aggiorno l'oggetto locationRequest e lo rimando al service?
                         break;
                     case Activity.RESULT_CANCELED:
                         // The user was asked to change settings, but chose not to
@@ -287,70 +283,36 @@ public void requestLocationSettings(){
                 break;
         }
     }
-*/
 
-
-
-
-
-//TODO: ma installando tramite apk non vengono richiesti i permessi di installazione per api < 23?
-    // solo installando da play store? e io come lo testo?
-
-// MECCANISMO PER RICHIEDERE PERMESSI DI LOCALIZZAZIONE A RUNTIME
+// mechanism to request location permissions at runtime
     public static final int MY_PERMISSIONS_REQUEST_LOCATION = 99;
 
     // if access_fine_location is granted, automatically it is granted coarse_loc too
     public boolean checkLocationPermission() {
 
-        Log.d("DEBUG", "checkLocationPermission()");
+        Log.d("DEBUG", "MainActivity: checkLocationPermission()");
 
         // checking permissions at runtime only for api level greater or equal than 23
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            /* if permission is currently disabled */
+            // if permission is currently disabled
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                     != PackageManager.PERMISSION_GRANTED) {
+                // ask permission
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                        MY_PERMISSIONS_REQUEST_LOCATION);
 
-                /* this method returns true if the user has previously selected "deny permission",(or has disabled from settings)
-                * in this case we show an explanation dialog */
-                if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                        Manifest.permission.ACCESS_FINE_LOCATION)) {
-
-                    // show explanation to the user *asynchronously*  After the user
-                    // sees the explanation, try again to request the permission.
-                    new AlertDialog.Builder(this)
-                            .setTitle(R.string.title_location_permission)
-                            .setMessage(R.string.text_location_permission)
-                            .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialogInterface, int i) {
-
-                                    ActivityCompat.requestPermissions(MainActivity.this,
-                                            new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                                            MY_PERMISSIONS_REQUEST_LOCATION);
-                                }
-                            })
-                            .create()
-                            .show();
-
-                } else {
-
-                    // this is the first time requesting the permission, I ask without explanations
-                    ActivityCompat.requestPermissions(this,
-                            new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                            MY_PERMISSIONS_REQUEST_LOCATION);
-                }
                 return false;
             } else {
                 return true;
             }
-
         }
-        // means permission was granted during installation
+            // means permission was granted during installation
+        else{
+                Log.d("DEBUG", "MainActivity: api<23 in checkPermission()");
+                return true;
+            }
 
-        else {
-            Log.d("DEBUG", "api<23 in checkPermission()");
-            return true;
-        }
     }
 
     // this callback handles the user answers to the location request
@@ -368,18 +330,11 @@ public void requestLocationSettings(){
                     if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                             == PackageManager.PERMISSION_GRANTED) {
 
-                        /*
-                        if (mGoogleApiClient != null) {
+                        mMap.setMyLocationEnabled(true);
 
-                            // this adds the button on the top right of the map and the focus functionality
-                            mMap.setMyLocationEnabled(true);
-                            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, locationRequest, this);
-                        }
-                        */
                         // start service when permission is granted
                         bindService(new Intent(this, LocationService.class), mLocationConnection, Context.BIND_AUTO_CREATE);
                         startService(new Intent(this, LocationService.class));
-
                     }
 
                 } else {
