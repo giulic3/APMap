@@ -100,6 +100,10 @@ public class ApService extends Service {
         mWifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
 
 
+        if(!mWifiManager.isWifiEnabled()) {
+            mWifiManager.setWifiEnabled(true);
+        }
+
         new Thread(new Runnable(){
             public void run() {
                 // TODO Auto-generated method stub
@@ -109,7 +113,7 @@ public class ApService extends Service {
                         Thread.sleep(60000);
                         //mServiceHandler.sendEmptyMessage(0);
                         Log.d("DEBUG", "ApService: in thread startScan()");
-                        mWifiManager.startScan();
+                        //mWifiManager.startScan();
 
                     } catch (InterruptedException e) {
                         // TODO Auto-generated catch block
@@ -159,6 +163,9 @@ public class ApService extends Service {
                         , Toast.LENGTH_LONG);
                 toast.show();
             }
+
+            //mWifiManager.startScan();
+            new UpdateDbTask().execute();
         }
 
     }

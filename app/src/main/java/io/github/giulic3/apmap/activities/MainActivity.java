@@ -212,7 +212,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 LatLng latLng = new LatLng(mLastKnownLocation.getLatitude(), mLastKnownLocation.getLongitude());
 
                 // move camera to current position and focus
-                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 14));
+                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 14), 2000, null);
                 isFirstUpdate = false;
             }
         }
