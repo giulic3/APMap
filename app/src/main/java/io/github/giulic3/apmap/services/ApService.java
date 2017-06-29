@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.location.Location;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
@@ -16,14 +17,23 @@ import android.os.Process;
 import android.util.Log;
 import android.widget.Toast;
 
+import java.util.ArrayList;
 import java.util.List;
 
+import io.github.giulic3.apmap.data.AccessPoint;
+import io.github.giulic3.apmap.data.UpdateDbTask.UpdateDbTask;
+
 public class ApService extends Service {
+
 
     private Looper mServiceLooper;
     //private ServiceHandler mServiceHandler;
     private WifiManager mWifiManager;
     private WifiReceiver mWifiReceiver;
+    private Location mLastKnownLocation;
+
+    // instantiate database
+
     //private List<AccessPoint> apList; // TOOD: da definire AccessPoint come una struct privata
 
     // A Handler allows you to send and process Message and Runnable objects associated with a thread's MessageQueue.
@@ -150,25 +160,33 @@ public class ApService extends Service {
         // executes when scan results are available
         @Override
         public void onReceive(Context arg0, Intent arg1) {
-            Log.d("DEBUG", "ApService: onReceive()");
+            List<AccessPoint> apList = new ArrayList<AccessPoint>();
 
+            Log.d("DEBUG", "ApService: onReceive()");
             wifiList = mWifiManager.getScanResults();
+
             for (int i = 0; i < wifiList.size(); i++) {
-                Toast toast = Toast.makeText(getApplicationContext(), "SSID: " + wifiList.get(i).SSID + "\n" +
-                                "BSSID: " + wifiList.get(i).BSSID + "\n" +
-                                "capabilities: " + wifiList.get(i).capabilities + "\n" +
-                                "frequency: " + wifiList.get(i).frequency + "\n" +
-                                "level: " + wifiList.get(i).level + "\n" +
-                                "timestamp: " + wifiList.get(i).timestamp
-                        , Toast.LENGTH_LONG);
-                toast.show();
+
+                apList.add(new AccessPoint(wifiList.get(i).BSSID, wifiList.get(i).SSID,
+                        wifiList.get(i).capabilities, wifiList.get(i).frequency,
+                        wifiList.get(i).level,
+                        wifiList.get(i).timestamp));
+
+
+                Log.i("INFO", "BSSID: " + wifiList.get(i).BSSID + "\n" +
+                        "SSID: " + wifiList.get(i).SSID + "\n" +
+                        "capabilities: " + wifiList.get(i).capabilities + "\n" +
+                        "frequency: " + wifiList.get(i).frequency + "\n" +
+                        "level: " + wifiList.get(i).level + "\n" +
+                        "timestamp: " + wifiList.get(i).timestamp );
             }
 
             //mWifiManager.startScan();
-            new UpdateDbTask().execute();
+            new UpdateDbTask(mLastKnownLocation).execute(apList);
         }
 
     }
+
 }
 
 

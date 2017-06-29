@@ -1,17 +1,24 @@
 package io.github.giulic3.apmap.data.UpdateDbTask;
 
+import android.location.Location;
 import android.os.AsyncTask;
 
-// params: lista di ap come struct/class (= risultato della scansione)
-// progress:
-// result: lista di ap da aggiornare sulla mappa (posizioni e info relative)
+import java.util.List;
+
+import io.github.giulic3.apmap.data.AccessPoint;
 
 
+public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Void> {
 
-public class UpdateDbTask extends AsyncTask<Void, Void, Long> {
+    // device location when ap scanning started
+    Location scanningLocation;
 
+    // my own constructor
+    public UpdateDbTask(Location scanningLocation) {
+        this.scanningLocation = scanningLocation;
+    }
 
-    protected Long doInBackground(Void ... urls) {
+    protected void doInBackground(List<AccessPoint> ... urls) {
 
     }
 
