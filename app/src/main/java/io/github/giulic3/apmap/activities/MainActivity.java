@@ -11,6 +11,8 @@ import android.content.IntentFilter;
 import android.content.IntentSender;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.location.Location;
 
 import android.os.IBinder;
@@ -23,6 +25,8 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.Toast;
 
 import com.google.android.gms.common.GoogleApiAvailability;
@@ -48,6 +52,8 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.LatLng;
 
 import io.github.giulic3.apmap.R;
+import io.github.giulic3.apmap.data.Database;
+import io.github.giulic3.apmap.data.DatabaseHelper;
 import io.github.giulic3.apmap.services.ApService;
 import io.github.giulic3.apmap.services.LocationService;
 
@@ -67,8 +73,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private GoogleMap mMap;
     private Location mLastKnownLocation;
-    //private BottomSheetBehavior mBottomSheetBehavior1;
-
+    private BottomSheetBehavior mBottomSheetBehavior;
+    private Button mButton;
     private LocationService mLocationService;
     private LocationRequest mLocationRequest;
     private GoogleApiClient mGoogleApiClient;
@@ -130,6 +136,25 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 mLocationReceiver, new IntentFilter("GPSLocationUpdates"));
        // LocalBroadcastManager.getInstance(MainActivity.this).registerReceiver(
           //      mApReceiver, new IntentFilter("AccessPointsUpdates"));
+
+
+        View bottomSheet = findViewById(R.id.ap_bottom_sheet);
+        mBottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
+
+        bottomSheet.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                Log.d("DEBUG", "bottomsheet listener");
+
+                if(mBottomSheetBehavior.getState() != BottomSheetBehavior.STATE_EXPANDED) {
+                    mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+                }
+                else {
+                    mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+                }
+            }
+        });
 
     }
 
