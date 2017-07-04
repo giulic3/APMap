@@ -43,12 +43,17 @@
             android:name="com.google.android.maps"
             android:required="false"/>
         <!-- // This is required if you want your app to start in the emulator. I set it to false also if map is not an essential part of the application -->
-        <activity android:name=".activities.MainActivity">
+
+
+        <activity android:name=".activities.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
-
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+        </activity>
+
+        <activity android:name=".activities.MainActivity">
+
         </activity>
 
         <service
@@ -56,11 +61,14 @@
             android:enabled="true"
             android:exported="false">
         </service>
+
         <service
             android:name=".services.LocationService"
             android:enabled="true"
             android:exported="true">
         </service>
+
+
     </application>
 
 </manifest>

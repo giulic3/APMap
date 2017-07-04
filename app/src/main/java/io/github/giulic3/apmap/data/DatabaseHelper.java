@@ -8,9 +8,6 @@ import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
-// TODO:
-// consider moving dbmanager methods to another class
-
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     // If you change the database schema, you must increment the database version.
@@ -32,7 +29,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + Database.Table1.COLUMN_NAME_FREQUENCY+" INT NOT NULL,"
                 + Database.Table1.COLUMN_NAME_ESTIMATED_LATITUDE+" DOUBLE,"
                 + Database.Table1.COLUMN_NAME_ESTIMATED_LONGITUDE+" DOUBLE,"
-                + Database.Table1.COLUMN_NAME_COVERAGE_CENTER+" DOUBLE,"
                 + Database.Table1.COLUMN_NAME_COVERAGE_RADIUS+" DOUBLE)";
         db.execSQL(createTable1);
 
@@ -61,9 +57,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
        //TODO: check methods definitions (return types, visibility...)
        public long insertAp(String bssid, String ssid, String capabilities, String frequency,
                             String estimatedLatitude, String estimatedLongitude,
-                             String coverageCenter, String coverageRadius) {
+                            String coverageRadius) {
 
-            // Gets the data repository in write mode MUORE QUA
+            // Gets the data repository in write mode
             SQLiteDatabase db = this.getWritableDatabase();
 
             // Create a new map of values, where column names are the keys
@@ -74,7 +70,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             values.put(Database.Table1.COLUMN_NAME_FREQUENCY, frequency);
             values.put(Database.Table1.COLUMN_NAME_ESTIMATED_LATITUDE, estimatedLatitude); // can be null initially
             values.put(Database.Table1.COLUMN_NAME_ESTIMATED_LONGITUDE, estimatedLongitude); // can be null
-            values.put(Database.Table1.COLUMN_NAME_COVERAGE_CENTER, coverageCenter); // can be null
             values.put(Database.Table1.COLUMN_NAME_COVERAGE_RADIUS, coverageRadius); // can be null
 
             // Insert the new row, returning the primary key value of the new row
@@ -88,8 +83,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         // returns true if Ap was found and updated, each parameter can be null when
         // it doesn't need to be updated (bssid excluded)
         public boolean updateAp(String bssid, String capabilities, String estimatedLatitude,
-                                String estimatedLongitude, Double coverageCenter,
-                                Double coverageRadius){
+                                String estimatedLongitude, Double coverageRadius){
 
             // search an access point by bssid and update
 

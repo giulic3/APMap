@@ -81,11 +81,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     boolean isBound = false;
     boolean isFirstUpdate = true; // true if locationChanged for the first time (patch)
 
-
-
-
-
-
     // when to bind or unbind:
     // If you need to interact with the service only while your activity is visible, you should bind
     // during onStart() and unbind during onStop().
@@ -118,7 +113,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        //setup mapfragment
+        // setup MapFragment
         if (mMap == null) {
             MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
             mapFragment.getMapAsync(this);
@@ -172,7 +167,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Log.d("DEBUG", "MainActivity: onStop()");
 
         super.onStop();
-        // Unbind from the service
+        // unbind from the service
         if (isBound) {
             unbindService(mLocationConnection);
             isBound = false;
@@ -351,7 +346,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 
-                    /* permission was granted, so I can do the location-related task */
+                    // permission was granted, so I can do the location-related task
                     if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                             == PackageManager.PERMISSION_GRANTED) {
 

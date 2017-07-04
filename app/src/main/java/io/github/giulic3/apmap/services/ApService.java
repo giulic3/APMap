@@ -10,21 +10,28 @@ import android.database.sqlite.SQLiteDatabase;
 import android.location.Location;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.widget.Toast;
+
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.model.LatLng;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import io.github.giulic3.apmap.activities.MainActivity;
 import io.github.giulic3.apmap.data.AccessPoint;
 import io.github.giulic3.apmap.data.Database;
 import io.github.giulic3.apmap.data.DatabaseHelper;
+import io.github.giulic3.apmap.data.UpdateDbTask;
 
 public class ApService extends Service {
 
@@ -86,6 +93,8 @@ public class ApService extends Service {
         mServiceHandler = new ServiceHandler(mServiceLooper);
         */
 
+        LocalBroadcastManager.getInstance(ApService.this).registerReceiver(
+                mLocationReceiver, new IntentFilter("GPSLocationUpdates"));
     }
 
 
@@ -93,6 +102,7 @@ public class ApService extends Service {
     // should clean up any resources it holds (e.g. threads)
     @Override
     public void onDestroy() {
+        LocalBroadcastManager.getInstance(ApService.this).unregisterReceiver(mLocationReceiver);
 
     }
 
@@ -189,13 +199,11 @@ public class ApService extends Service {
 
             }
 
-            //mWifiManager.startScan();
-            //new UpdateDbTask.java(mLastKnownLocation).execute(apList);
-            long ok = mDbHelper.insertAp(wifiList.get(0).BSSID, wifiList.get(0).SSID,
-                    wifiList.get(0).capabilities, "ehiehiehi", null, null, null, null);
-            Log.d("DEBUG", "ApService: ap inserted "+ok);
+            new UpdateDbTask(mLastKnownLocation).execute(apList);
+
             // inserts twice if it's already there????
-            updateDatabase();
+            //updateDatabase();
+
 
         }
     }
@@ -235,6 +243,18 @@ public class ApService extends Service {
         cursor.close();
         //dbtry.close();
     }
+
+    private BroadcastReceiver mLocationReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            // Get extra data included in the Intent
+            String message = intent.getStringExtra("Status");
+            Bundle b = intent.getBundleExtra("Location");
+            mLastKnownLocation = (Location) b.getParcelable("Location");
+
+        }
+    };
+
 }
 
 

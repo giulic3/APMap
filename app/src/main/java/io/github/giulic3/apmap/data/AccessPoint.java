@@ -24,5 +24,4 @@ public class AccessPoint {
         this.timestamp = timestamp;
     }
 
-
 }

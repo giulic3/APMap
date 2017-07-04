@@ -193,6 +193,7 @@ public class LocationService extends Service implements LocationListener,
                 .build();
     }
 
+    // actually also to apservice...
     private void sendMessageToActivity(Location l, String msg) {
         Intent intent = new Intent("GPSLocationUpdates");
         // You can also include some extra data.
