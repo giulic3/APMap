@@ -24,4 +24,30 @@ public class AccessPoint {
         this.timestamp = timestamp;
     }
 
+    public String getBssid() {
+        return bssid;
+    }
+
+    public String getSsid() {
+        return ssid;
+    }
+
+    public String getCapabilities() {
+        return capabilities;
+    }
+
+    public int getFrequency() {
+        return frequency;
+    }
+
+    public int getLevel() {
+        return level;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    // any other methods?
+    // in this way this class is almost useless
 }

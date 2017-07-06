@@ -19,7 +19,6 @@ import android.os.Message;
 import android.os.Process;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.model.LatLng;
@@ -27,7 +26,6 @@ import com.google.android.gms.maps.model.LatLng;
 import java.util.ArrayList;
 import java.util.List;
 
-import io.github.giulic3.apmap.activities.MainActivity;
 import io.github.giulic3.apmap.data.AccessPoint;
 import io.github.giulic3.apmap.data.Database;
 import io.github.giulic3.apmap.data.DatabaseHelper;
@@ -199,49 +197,14 @@ public class ApService extends Service {
 
             }
 
-            new UpdateDbTask(mLastKnownLocation).execute(apList);
+            DatabaseHelper mDbHelper = new DatabaseHelper(ApService.this);
+            new UpdateDbTask(mDbHelper, mLastKnownLocation).execute(apList);
 
             // inserts twice if it's already there????
             //updateDatabase();
 
 
         }
-    }
-
-    private void updateDatabase(){
-
-        // TODO: temporarily update db without asynctask
-        //DatabaseHelper mDbHelper = new DatabaseHelper(ApService.this);
-
-
-        // uso una select per vedere il contenuto del database
-        SQLiteDatabase dbtry = mDbHelper.getReadableDatabase();
-        Cursor cursor = dbtry.query(Database.Table1.TABLE_NAME, null, null, null,
-                null, null, null);
-        //non entra mai
-        // return false (cursor is empty?)
-        if (cursor != null && cursor.getCount()>0) Log.d("DEBUG", "sticazzi");
-        /*
-        if (c.moveToFirst()) {
-            do {
-                //assign values
-                String column1 = c.getString(0);
-                String column2 = c.getString(1);
-                String column3 = c.getString(2);
-                Log.d("DEBUG", column1 +" "+ column2 +" "+ column3);
-
-            } while (c.moveToNext());
-        }
-        */
-
-        while(cursor.moveToNext()) {
-            String bssid = cursor.getString(
-                    cursor.getColumnIndexOrThrow(Database.Table1.COLUMN_NAME_BSSID));
-            Log.d("DEBUG", "sticazzi: bssid");
-        }
-
-        cursor.close();
-        //dbtry.close();
     }
 
     private BroadcastReceiver mLocationReceiver = new BroadcastReceiver() {
