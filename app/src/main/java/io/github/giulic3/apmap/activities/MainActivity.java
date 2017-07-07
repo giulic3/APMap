@@ -5,40 +5,32 @@ import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.IntentSender;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.location.Location;
 
 import android.os.IBinder;
-import android.renderscript.ScriptGroup;
 import android.support.design.widget.BottomSheetBehavior;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.common.GoogleApiAvailability;
-import com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks;
-import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
 import com.google.android.gms.common.api.PendingResult;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.LocationListener;
-import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResult;
@@ -50,8 +42,17 @@ import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
 
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
+
+import org.w3c.dom.Text;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import io.github.giulic3.apmap.R;
+import io.github.giulic3.apmap.data.AccessPoint;
+import io.github.giulic3.apmap.data.AccessPointInfoEntry;
 import io.github.giulic3.apmap.data.Database;
 import io.github.giulic3.apmap.data.DatabaseHelper;
 import io.github.giulic3.apmap.services.ApService;
@@ -68,24 +69,28 @@ import static com.google.android.gms.common.ConnectionResult.SERVICE_VERSION_UPD
 // - handle permissions (can do that only in activities or fragments)
 // - setup (custom) map
 
-
-public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
+// TODO consider using recyclerview or listview for bottomsheet
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
 
     private GoogleMap mMap;
     private Location mLastKnownLocation;
     private BottomSheetBehavior mBottomSheetBehavior;
-    private Button mButton;
     private LocationService mLocationService;
     private LocationRequest mLocationRequest;
     private GoogleApiClient mGoogleApiClient;
     boolean isBound = false;
     boolean isFirstUpdate = true; // true if locationChanged for the first time (patch)
+    DatabaseHelper mDbHelper;
+    private Button mButton;
+    private List<AccessPointInfoEntry> apInfoList;
+
 
     // when to bind or unbind:
     // If you need to interact with the service only while your activity is visible, you should bind
     // during onStart() and unbind during onStop().
     // If you want your activity to receive responses even while it is stopped in the background,
     // then you can bind during onCreate() and unbind during onDestroy().
+
     private ServiceConnection mLocationConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -95,14 +100,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             isBound = true;
             requestLocationSettings();
             Toast.makeText(MainActivity.this, "onServiceConnected()", Toast.LENGTH_LONG).show();
-
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
             mLocationService = null;
             isBound = false;
-
         }
     };
 
@@ -126,27 +129,31 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             startService(new Intent(this, LocationService.class));
         }
         startService(new Intent(this, ApService.class));
-
         LocalBroadcastManager.getInstance(MainActivity.this).registerReceiver(
                 mLocationReceiver, new IntentFilter("GPSLocationUpdates"));
        // LocalBroadcastManager.getInstance(MainActivity.this).registerReceiver(
           //      mApReceiver, new IntentFilter("AccessPointsUpdates"));
 
 
+        mDbHelper = new DatabaseHelper(MainActivity.this);
+
         View bottomSheet = findViewById(R.id.ap_bottom_sheet);
         mBottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
+        mBottomSheetBehavior.setPeekHeight(0); // key line
 
-        bottomSheet.setOnClickListener(new View.OnClickListener() {
-
+        //working
+        mButton = (Button) findViewById(R.id.button);
+        mButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) {
-                Log.d("DEBUG", "bottomsheet listener");
-
+            public void onClick(View view) {
+                Log.d("DEBUG", "bottom sheet state: "+mBottomSheetBehavior.getState());
                 if(mBottomSheetBehavior.getState() != BottomSheetBehavior.STATE_EXPANDED) {
                     mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+                    Log.d("DEBUG", "onClick if");
                 }
                 else {
                     mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+                    Log.d("DEBUG", "onClick else");
                 }
             }
         });
@@ -190,7 +197,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     == PackageManager.PERMISSION_GRANTED) && (mMap != null)) {
                 mMap.setMyLocationEnabled(true);
             }
-
         }
     }
 
@@ -203,10 +209,66 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             mMap.setMyLocationEnabled(true);
         }
 
+        populateMap();
+
     }
-    // this method extracts data from db and fill the map with aps and relative info
+
+    // this method extracts data from db
+    // and fill the map with aps markers, associating each marker
+    // to an accesspointinfo object
     private void populateMap() {
 
+        Log.d("DEBUG", "populateMap()");
+        apInfoList = new ArrayList<>();
+        Cursor cursor = mDbHelper.getAll("AccessPointInfo");
+
+        if (cursor.moveToFirst()) {
+            do {
+                apInfoList.add(new AccessPointInfoEntry(
+                                cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_BSSID)),
+                                cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_SSID)),
+                                cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_CAPABILITIES)),
+                                cursor.getInt(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_FREQUENCY)),
+                                cursor.getDouble(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LATITUDE)),
+                                cursor.getDouble(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LONGITUDE)),
+                                cursor.getDouble(cursor.getColumnIndex((Database.Table1.COLUMN_NAME_COVERAGE_RADIUS)))));
+
+            } while (cursor.moveToNext());
+
+            cursor.close();
+            // TODO:
+            // latitude and longitude must be null here not 0.0 jeez
+            for (int i = 0; i < apInfoList.size(); i++) {
+                Double latitude = apInfoList.get(i).getEstimatedLatitude();
+                Double longitude = apInfoList.get(i).getEstimatedLongitude();
+                Log.d("DEBUG", "latitude: "+latitude+" longitude: "+longitude);
+                // where to put this?
+                mMap.setOnMarkerClickListener(this);
+
+                if (latitude != null && longitude != null) { //always true
+                    Marker marker = mMap.addMarker(new MarkerOptions().position(new LatLng(latitude, longitude)));
+                    marker.setTag(apInfoList.get(i));
+
+                }
+            }
+        }
+    }
+
+    // on (generic) marker click callback MAYBE A RECYCLERVIEW OR A LISTVIEW?
+    @Override
+    public boolean onMarkerClick(Marker marker){
+        // where to put all these variables?
+        TextView bssidTv = (TextView) findViewById(R.id.bssid);
+        TextView ssidTv = (TextView) findViewById(R.id.ssid);
+        TextView capabilitiesTv = (TextView) findViewById(R.id.bssid);
+        TextView frequencyTv = (TextView) findViewById(R.id.bssid);
+        TextView levelTv = (TextView) findViewById(R.id.bssid);
+        TextView estimatedLatitudeTv = (TextView) findViewById(R.id.bssid);
+        TextView estimatedLongitudeTv = (TextView) findViewById(R.id.bssid);
+        TextView coverageRadiusTv = (TextView) findViewById(R.id.bssid);
+
+        // TODO:
+        return true;
     }
 
     // callback interface for when the map is ready to be used
@@ -217,7 +279,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         mMap = googleMap;
         setUpMap();
-
     }
 
     private BroadcastReceiver mLocationReceiver = new BroadcastReceiver() {
@@ -328,10 +389,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         }
             // means permission was granted during installation
-        else{
+        else {
                 Log.d("DEBUG", "MainActivity: api<23 in checkPermission()");
                 return true;
-            }
+        }
 
     }
 
@@ -366,8 +427,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 }
                 return;
             }
-
         }
     }
-
 }

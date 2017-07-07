@@ -33,7 +33,7 @@ import io.github.giulic3.apmap.data.UpdateDbTask;
 
 public class ApService extends Service {
 
-    private static final long THREAD_SLEEP = 60000;
+    private static final long THREAD_SLEEP = 120000;
     private Looper mServiceLooper;
     //private ServiceHandler mServiceHandler;
     private WifiManager mWifiManager;
@@ -199,11 +199,6 @@ public class ApService extends Service {
 
             DatabaseHelper mDbHelper = new DatabaseHelper(ApService.this);
             new UpdateDbTask(mDbHelper, mLastKnownLocation).execute(apList);
-
-            // inserts twice if it's already there????
-            //updateDatabase();
-
-
         }
     }
 

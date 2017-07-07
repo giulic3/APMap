@@ -171,10 +171,10 @@ public class LocationService extends Service implements LocationListener,
         mLocationRequest = LocationRequest.create();
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         // these determines how often onLocationChanged() will be called,
-        // time is in ms, aka 30 seconds */ //TODO: set time according to common sense
-        mLocationRequest.setInterval(20000);
+        // time is in ms, aka 30 seconds */ //TODO: set time according to common sense and remove hardcoded numbers
+        mLocationRequest.setInterval(60000);
         // 30 seconds
-        mLocationRequest.setFastestInterval(30000);
+        mLocationRequest.setFastestInterval(60000);
 
     }
 
