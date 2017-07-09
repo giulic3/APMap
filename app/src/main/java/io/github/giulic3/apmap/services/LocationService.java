@@ -149,8 +149,6 @@ public class LocationService extends Service implements LocationListener,
     public void onLocationChanged(Location location) {
 
         Log.d("DEBUG", "LocationService: onLocationChanged()");
-        // TODO: toast temporanei per avere un feedback
-        Toast.makeText(this, "location :"+location.getLatitude()+" , "+location.getLongitude(), Toast.LENGTH_LONG).show();
         mLastLocation = location;
         // notify activity with changed location
         String message = "location just changed";

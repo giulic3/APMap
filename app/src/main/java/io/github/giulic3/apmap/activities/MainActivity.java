@@ -158,6 +158,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
 
+
+
+        Button button = (Button) findViewById(R.id.button);
+
+        button.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+
+                Intent dbmanager = new Intent(MainActivity.this, AndroidDatabaseManager.class);
+                startActivity(dbmanager);
+            }
+        });
     }
 
     @Override
@@ -221,53 +232,76 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Log.d("DEBUG", "populateMap()");
         apInfoList = new ArrayList<>();
         Cursor cursor = mDbHelper.getAll("AccessPointInfo");
+        mMap.setOnMarkerClickListener(this);
 
         if (cursor.moveToFirst()) {
             do {
-                apInfoList.add(new AccessPointInfoEntry(
-                                cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_BSSID)),
-                                cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_SSID)),
-                                cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_CAPABILITIES)),
-                                cursor.getInt(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_FREQUENCY)),
-                                cursor.getDouble(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LATITUDE)),
-                                cursor.getDouble(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LONGITUDE)),
-                                cursor.getDouble(cursor.getColumnIndex((Database.Table1.COLUMN_NAME_COVERAGE_RADIUS)))));
+                // type string: can be null
+                String latitude = cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LATITUDE));
+                String longitude = cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LONGITUDE));
 
-            } while (cursor.moveToNext());
+                if (latitude != null && longitude != null) {
 
-            cursor.close();
-            // TODO:
-            // latitude and longitude must be null here not 0.0 jeez
-            for (int i = 0; i < apInfoList.size(); i++) {
-                Double latitude = apInfoList.get(i).getEstimatedLatitude();
-                Double longitude = apInfoList.get(i).getEstimatedLongitude();
-                Log.d("DEBUG", "latitude: "+latitude+" longitude: "+longitude);
-                // where to put this?
-                mMap.setOnMarkerClickListener(this);
+                    Marker marker = mMap.addMarker(new MarkerOptions().position(
+                            new LatLng(Double.parseDouble(latitude), Double.parseDouble(longitude))));
+                    // prepare object to associate to map marker
+                    // no lat/lon, no need to associate object, will be done when refreshing map
+                    apInfoList.add(new AccessPointInfoEntry(
+                            cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_BSSID)),
+                            cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_SSID)),
+                            cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_CAPABILITIES)),
+                            cursor.getInt(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_FREQUENCY)),
+                            cursor.getDouble(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LATITUDE)),
+                            cursor.getDouble(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LONGITUDE)),
+                            cursor.getDouble(cursor.getColumnIndex((Database.Table1.COLUMN_NAME_COVERAGE_RADIUS)))));
 
-                if (latitude != null && longitude != null) { //always true
-                    Marker marker = mMap.addMarker(new MarkerOptions().position(new LatLng(latitude, longitude)));
-                    marker.setTag(apInfoList.get(i));
-
+                    marker.setTag(apInfoList.get(apInfoList.size() - 1));
                 }
-            }
+
+
+                // la getDouble fa un cast non voluto da null a 0.0!
+            } while (cursor.moveToNext());
         }
+        cursor.close();
+        // TODO:
+        // latitude and longitude must be null here not 0.0 jeez
+
+
+        // temporary: just to have a marker
+        Marker marker = mMap.addMarker(new MarkerOptions().position(
+                new LatLng(44.0, 11.0)));
+        AccessPointInfoEntry ap = new AccessPointInfoEntry("mac address", "mia-rete", "chiusa", 2400, 44.0, 11.0, 1.5);
+        marker.setTag(ap);
     }
 
+
     // on (generic) marker click callback MAYBE A RECYCLERVIEW OR A LISTVIEW?
+    // questo modo di fare le cose fa schifo
     @Override
     public boolean onMarkerClick(Marker marker){
+        Log.d("DEBUG", "MainActivity: onMarkerClick()");
+
         // where to put all these variables?
         TextView bssidTv = (TextView) findViewById(R.id.bssid);
         TextView ssidTv = (TextView) findViewById(R.id.ssid);
-        TextView capabilitiesTv = (TextView) findViewById(R.id.bssid);
-        TextView frequencyTv = (TextView) findViewById(R.id.bssid);
-        TextView levelTv = (TextView) findViewById(R.id.bssid);
-        TextView estimatedLatitudeTv = (TextView) findViewById(R.id.bssid);
-        TextView estimatedLongitudeTv = (TextView) findViewById(R.id.bssid);
-        TextView coverageRadiusTv = (TextView) findViewById(R.id.bssid);
+        TextView capabilitiesTv = (TextView) findViewById(R.id.capabilities);
+        TextView frequencyTv = (TextView) findViewById(R.id.frequency);
+        TextView levelTv = (TextView) findViewById(R.id.level);
+        TextView estimatedLatitudeTv = (TextView) findViewById(R.id.estimated_latitude);
+        TextView estimatedLongitudeTv = (TextView) findViewById(R.id.estimated_longitude);
+        TextView coverageRadiusTv = (TextView) findViewById(R.id.coverage_radius);
 
         // TODO:
+        AccessPointInfoEntry apInfoEntry = (AccessPointInfoEntry) marker.getTag();
+        bssidTv.setText(apInfoEntry.getBssid()); // crash
+        ssidTv.setText(apInfoEntry.getSsid());
+        capabilitiesTv.setText(apInfoEntry.getCapabilities());
+        frequencyTv.setText(String.valueOf(apInfoEntry.getFrequency()));
+        // levelTv.setText(); level must be set in other ways
+        estimatedLatitudeTv.setText(String.valueOf(apInfoEntry.getEstimatedLatitude()));
+        estimatedLongitudeTv.setText(String.valueOf(apInfoEntry.getEstimatedLongitude()));
+        coverageRadiusTv.setText(String.valueOf(apInfoEntry.getCoverageRadius()));
+
         return true;
     }
 

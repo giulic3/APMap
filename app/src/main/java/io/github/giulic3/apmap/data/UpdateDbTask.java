@@ -1,13 +1,17 @@
 package io.github.giulic3.apmap.data;
 
+import android.database.Cursor;
 import android.location.Location;
 import android.os.AsyncTask;
 import android.util.Log;
+
+import com.google.android.gms.maps.model.LatLng;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import io.github.giulic3.apmap.data.AccessPoint;
+import io.github.giulic3.apmap.services.ApService;
 
 
 public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
@@ -16,6 +20,7 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
     Location scanningLocation;
     DatabaseHelper dbHelper;
     List<AccessPoint> apList;
+    private static final int SCAN_LIMIT = 100;
 
     // my own constructor
     public UpdateDbTask(DatabaseHelper dbHelper, Location scanningLocation) {
@@ -42,7 +47,7 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
                     aps[0].get(i).getLevel());
 
 
-
+            // TODO change bool definition, it's counterintuitive
             // insert in db as accesspointinfo (only if it's the first time)
             boolean canInsert = dbHelper.searchBssid(Database.Table1.TABLE_NAME, aps[0].get(i).getBssid());
             if (!canInsert) {
@@ -58,9 +63,21 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
         //dbHelper.printAll(Database.Table2.TABLE_NAME);
         // printing all accesspointinfo entries
         dbHelper.printAll(Database.Table1.TABLE_NAME);
-        dbHelper.close();
 
         apList = aps[0]; // che succede ad aps[0] quando il metodo termina?
+
+        // perform approximation every 100 scan
+        if (ApService.SCAN_COUNTER >= SCAN_LIMIT) {
+
+            Cursor cursor = dbHelper.getInputSetForTriangulation();
+            updateAccessPointPosition();
+
+            // TODO bad habit to assign a public field like this
+            ApService.SCAN_COUNTER = 0;
+        }
+
+        dbHelper.close();
+
         return aps[0].size(); // con nessuna utilità apparente
 
     }
@@ -80,5 +97,17 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
         // TODO:
         // find marker by bssid
         // move marker, update info on bottomsheet or list
+    }
+
+
+
+    private void updateAccessPointPosition(){
+
+        Log.d("DEBUG", "UpdateDbTask: updateAccessPointPosition()");
+    }
+
+    // given an array of n objects (lat+lon+level) that corresponds to a certain bssid (ap)
+    private void performTriangulation(ArrayList<LatLng> latLngs) {
+
     }
 }

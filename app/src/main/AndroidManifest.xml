@@ -56,6 +56,9 @@
 
         </activity>
 
+        <!-- REMOVE LATER -->
+        <activity android:name="io.github.giulic3.apmap.activities.AndroidDatabaseManager"
+                  android:theme="@style/Theme.AppCompat.Light"/>
         <service
             android:name=".services.ApService"
             android:enabled="true"
