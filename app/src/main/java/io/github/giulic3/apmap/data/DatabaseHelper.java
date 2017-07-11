@@ -244,8 +244,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     + Database.Table2.TABLE_NAME+"."+Database.Table1.COLUMN_NAME_BSSID
                     +" WHERE "+Database.Table1.COLUMN_NAME_ESTIMATED_LATITUDE +" IS NULL AND "+
                     Database.Table1.COLUMN_NAME_ESTIMATED_LONGITUDE+ " IS NULL "+
-                    "GROUP BY "+Database.Table1.TABLE_NAME + Database.Table1.COLUMN_NAME_BSSID+
-                    " HAVING COUNT("+Database.Table1.TABLE_NAME + Database.Table1.COLUMN_NAME_BSSID+") >= 3";
+                    "GROUP BY "+Database.Table1.TABLE_NAME +"."+ Database.Table1.COLUMN_NAME_BSSID+
+                    " HAVING COUNT("+Database.Table1.TABLE_NAME +"."+ Database.Table1.COLUMN_NAME_BSSID+") >= 3";
 
             Log.d("DEBUG", "provaquery: "+query);
             Cursor cursor = db.rawQuery(query, null);
