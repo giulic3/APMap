@@ -11,6 +11,7 @@ import android.content.IntentSender;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.graphics.Color;
 import android.location.Location;
 
 import android.os.IBinder;
@@ -41,6 +42,8 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
 
+import com.google.android.gms.maps.model.Circle;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -160,7 +163,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
 
-        Button button = (Button) findViewById(R.id.button);
+        Button button = (Button) findViewById(R.id.button_db);
 
         button.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -239,11 +242,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 // type string: can be null
                 String latitude = cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LATITUDE));
                 String longitude = cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LONGITUDE));
+                String coverageRadius = cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_COVERAGE_RADIUS));
 
                 if (latitude != null && longitude != null) {
 
                     Marker marker = mMap.addMarker(new MarkerOptions().position(
                             new LatLng(Double.parseDouble(latitude), Double.parseDouble(longitude))));
+                    // adding circle
+                    Circle circle = mMap.addCircle(new CircleOptions()
+                            .center(new LatLng(Double.parseDouble((latitude)), Double.parseDouble(longitude)))
+                            .radius(Double.parseDouble(coverageRadius))
+                            .strokeColor(Color.TRANSPARENT)
+                            .fillColor(Color.parseColor("#8014EE91"))
+                            .zIndex(1.0f)); // color depends on capabilities
+                    // green ones have higher z-index
                     // prepare object to associate to map marker
                     // no lat/lon, no need to associate object, will be done when refreshing map
                     apInfoList.add(new AccessPointInfoEntry(
@@ -258,8 +270,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     marker.setTag(apInfoList.get(apInfoList.size() - 1));
                 }
 
-
-                // la getDouble fa un cast non voluto da null a 0.0!
             } while (cursor.moveToNext());
         }
         cursor.close();
@@ -272,6 +282,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 new LatLng(44.0, 11.0)));
         AccessPointInfoEntry ap = new AccessPointInfoEntry("mac address", "mia-rete", "chiusa", 2400, 44.0, 11.0, 1.5);
         marker.setTag(ap);
+
+        // adding circle shape (JUST TEMPORARY)
+        Circle circle = mMap.addCircle(new CircleOptions()
+                .center(new LatLng(44.0, 11.0))
+                .radius(10000)
+                .strokeColor(Color.TRANSPARENT)
+                .fillColor(Color.parseColor("#8014EE91")));
     }
 
 
@@ -291,16 +308,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         TextView estimatedLongitudeTv = (TextView) findViewById(R.id.estimated_longitude);
         TextView coverageRadiusTv = (TextView) findViewById(R.id.coverage_radius);
 
-        // TODO:
         AccessPointInfoEntry apInfoEntry = (AccessPointInfoEntry) marker.getTag();
-        bssidTv.setText(apInfoEntry.getBssid()); // crash
-        ssidTv.setText(apInfoEntry.getSsid());
-        capabilitiesTv.setText(apInfoEntry.getCapabilities());
-        frequencyTv.setText(String.valueOf(apInfoEntry.getFrequency()));
-        // levelTv.setText(); level must be set in other ways
-        estimatedLatitudeTv.setText(String.valueOf(apInfoEntry.getEstimatedLatitude()));
-        estimatedLongitudeTv.setText(String.valueOf(apInfoEntry.getEstimatedLongitude()));
-        coverageRadiusTv.setText(String.valueOf(apInfoEntry.getCoverageRadius()));
+        bssidTv.setText("BSSID: " + apInfoEntry.getBssid());
+        ssidTv.setText("SSID: " + apInfoEntry.getSsid());
+        capabilitiesTv.setText("CAPABILITIES: " + apInfoEntry.getCapabilities());
+        frequencyTv.setText("FREQUENCY: " + String.valueOf(apInfoEntry.getFrequency()));
+        // levelTv.setText(); level must be set in other ways //TODO
+        estimatedLatitudeTv.setText("LATITUDE: " + String.valueOf(apInfoEntry.getEstimatedLatitude()));
+        estimatedLongitudeTv.setText("LONGITUDE: " + String.valueOf(apInfoEntry.getEstimatedLongitude()));
+        coverageRadiusTv.setText("COVERAGE RADIUS: " + String.valueOf(apInfoEntry.getCoverageRadius()));
 
         return true;
     }

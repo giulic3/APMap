@@ -33,11 +33,14 @@ import io.github.giulic3.apmap.data.UpdateDbTask;
 
 public class ApService extends Service {
 
+    // used in conjunction with lastknownlocation to determine if can perform scansion
     private static final long THREAD_SLEEP = 120000;
+    private static final long SCAN_DISTANCE_INTERVAL = 10; //in metres TODO: common sense
     private Looper mServiceLooper;
     //private ServiceHandler mServiceHandler;
     private WifiManager mWifiManager;
     private WifiReceiver mWifiReceiver;
+    private Location previousLocation;
     private Location mLastKnownLocation;
     private DatabaseHelper mDbHelper;
      // used to count number of scan performed, every 100 scans, will
@@ -90,8 +93,13 @@ public class ApService extends Service {
                     try {
                         // increase thread_sleep because onreceive is much slower than thread
                         Log.d("DEBUG", "ApService: in thread startScan()");
-                        mWifiManager.startScan();
-                        SCAN_COUNTER++;
+                        // if they are null means it's the first scan, so we can proceed
+                        if ((previousLocation == null || mLastKnownLocation == null) ||
+                                convertToDistance(previousLocation, mLastKnownLocation) >= SCAN_DISTANCE_INTERVAL) {
+                            mWifiManager.startScan();
+                            SCAN_COUNTER++;
+                        }
+
                         Thread.sleep(THREAD_SLEEP);
 
 
@@ -158,10 +166,38 @@ public class ApService extends Service {
             // Get extra data included in the Intent
             String message = intent.getStringExtra("Status");
             Bundle b = intent.getBundleExtra("Location");
+
+            previousLocation = mLastKnownLocation;
             mLastKnownLocation = (Location) b.getParcelable("Location");
+
 
         }
     };
+
+    // given two Location objects, this method returns the distance in metres.
+    // will be used to decide to perform or not the ap scan
+    // uses haversine formula
+    // temporary public because used also by updatetaskdb
+    private double convertToDistance(Location previousLocation, Location currentLocation) {
+
+        double previousLatitude = previousLocation.getLatitude();
+        double previousLongitude = previousLocation.getLongitude();
+        double currentLatitude = currentLocation.getLatitude();
+        double currentLongitude = currentLocation.getLongitude();
+        double earthRadius = 6371000; // metres
+        double φ1 = Math.toRadians(previousLatitude);
+        double φ2 = Math.toRadians(currentLatitude);
+        double Δφ = Math.toRadians(currentLatitude - previousLatitude);
+        double Δλ = Math.toRadians(currentLongitude-previousLongitude);
+
+        double a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                        Math.sin(Δλ/2) * Math.sin(Δλ/2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+        double distanceInMetres = earthRadius * c;
+        return distanceInMetres;
+    }
 
 }
 

@@ -68,48 +68,67 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
 
         // perform approximation every 100 scan
         if (ApService.SCAN_COUNTER >= SCAN_LIMIT) {
-
-            Cursor cursor = dbHelper.getInputSetForTriangulation();
+            // i could move everything inside databasehelper TODO
+            Cursor cursor = dbHelper.getInputSetForTrilateration();
 
             if (cursor.moveToFirst()) {
-                cursor.getString(0);  //get the first bssid
-                LatLng[] latLngs = new LatLng[3]; // works only with three points
-                double[] distances = new double[3]; // TODO: where to put these
-                int i = 0;
+                String currentBssid = cursor.getString(
+                        cursor.getColumnIndexOrThrow(Database.Table1.COLUMN_NAME_BSSID));
+                  //get the first bssid
+
+                int j = 0;
                 // assegno il bssid, prendo le prime 3 misure che trovo, costruisco latlng + distances
                 // dopo aver approssimato scalo al prossimo bssid
                 // e continuo
+                LatLng[] latLngs = new LatLng[3]; // works only with three points
+                double[] distances = new double[3];
                 do {
-                    double lat = cursor.getDouble(cursor.getColumnIndexOrThrow(Database.Table2.COLUMN_NAME_SCAN_LATITUDE));
+
+                    // retrieving information from db
+                    double lat = cursor.getDouble(cursor.getColumnIndexOrThrow(
+                            Database.Table2.TABLE_NAME+"."+Database.Table2.COLUMN_NAME_SCAN_LATITUDE));
                     double lon = cursor.getDouble(cursor.getColumnIndexOrThrow(Database.Table2.COLUMN_NAME_SCAN_LONGITUDE));
-                    latLngs[i] = new LatLng(lat, lon);
                     int level = cursor.getInt(cursor.getColumnIndexOrThrow(Database.Table2.COLUMN_NAME_LEVEL));
                     int frequency = cursor.getInt(cursor.getColumnIndexOrThrow(Database.Table1.COLUMN_NAME_FREQUENCY));
-                    distances[i] = levelToDistance(level, frequency); // TODO: completare
-                    if (i == 2)  {
+
+                    latLngs[j] = new LatLng(lat, lon);
+                    distances[j] = levelToDistance(level, frequency);
+
+
+                    if (j == 2)  {
                         LatLng res = getLocationByTrilateration(latLngs[0], distances[0], latLngs[1], distances[1], latLngs[2], distances[2]);
+                        Log.d("DEBUG", "UpdateDbTask: latitude "+res.latitude+"\n" +
+                                "longitude "+res.longitude);
+                        // then update position in db (only if trilateration went well)
+                        if (!Double.isNaN(res.latitude) && !Double.isNaN(res.longitude)) {
+                            // TODO: coverageRadius (last parameter) is unknown at the moment
+                            // update coverage only if i have latitude and longitude
+                            double coverageRadius = determineCoverage(currentBssid, res.latitude, res.longitude);
+                            dbHelper.updateAp(currentBssid, null, null, res.latitude, res.longitude, coverageRadius);
 
-                        // then update position in db
+                        }
+                        // then go to next bssid
+                        while (cursor.getString(cursor.getColumnIndexOrThrow(
+                                Database.Table1.COLUMN_NAME_BSSID)).equals(currentBssid)) {
+                            cursor.moveToNext();
+                        }
 
-                        // then reset i
-                        i = 0;
+                        currentBssid = cursor.getString(cursor.getColumnIndexOrThrow(
+                                Database.Table1.COLUMN_NAME_BSSID));
+
+                        // horrible patch but should work
+                        cursor.moveToPrevious();
+                        // then reset j
+                        j = 0;
+                    }
+                    else {
+                        j++;
                     }
 
                 }
                 while (cursor.moveToNext());
             }
 
-
-            //TEMPORARY, FOR TESTING
-            /*
-            LatLng[] latLngs = new LatLng[]{new LatLng(37.418436,-121.963477),
-                    new LatLng(37.417243,-121.961889 ), new LatLng(37.418692,-121.960194)};
-            double[] distances = new double[]{0.265710701754, 0.234592423446, 0.0548954278262 }; //distances in km
-            */
-            LatLng res = getLocationByTrilateration(latLngs[0], distances[0], latLngs[1], distances[1], latLngs[2], distances[2]);
-            Log.d("DEBUG", "UpdateDbTask: latitude "+res.latitude+"\n" +
-                    "longitude "+res.longitude);
-            // should be 37.4191023738 -121.960579208
             // TODO bad habit to assign a public field like this
             ApService.SCAN_COUNTER = 0;
         }
@@ -133,7 +152,8 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
     // update on the map infos relative to given list of ap
     private void refreshMap(){
         // TODO:
-        // find marker by bssid
+        // find marker by bssid, must update marker objects and graphical markers
+
         // move marker, update info on bottomsheet or list
     }
 
@@ -183,6 +203,8 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
 
     }
 */
+
+// taken from stackoverflow, must give credit to author
     // works with only 3 points
     public LatLng getLocationByTrilateration(
             LatLng location1, double distance1,
@@ -292,4 +314,69 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
         return new LatLng(triptx,tripty);
 
     }
+    // takes level in dbm, frequency in mhZ and returns distance in km using an approximation of
+    // free-space path loss formula
+    private double levelToDistance(int level, int frequency) { // be sure of minus sign
+
+        double distanceInMetres = Math.pow(10, ((27.55 - (20*Math.log10(frequency)) - level)/ 20));
+        double distanceInKilometres = distanceInMetres / 1000;
+        return distanceInKilometres;
+    }
+
+    private double convertToDistanceUsingDoubles(double accessPointLatitude, double accessPointLongitude,
+                                                 double scanLatitude, double scanLongitude ) {
+
+
+        double earthRadius = 6371000; // metres
+        double φ1 = Math.toRadians(accessPointLatitude);
+        double φ2 = Math.toRadians(scanLatitude);
+        double Δφ = Math.toRadians(scanLatitude - accessPointLatitude);
+        double Δλ = Math.toRadians(scanLongitude - accessPointLongitude);
+
+        double a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                        Math.sin(Δλ/2) * Math.sin(Δλ/2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+        double distanceInMetres = earthRadius * c;
+        return distanceInMetres;
+    }
+    // given a set of scan results for a certain bssid, this method returns the average among
+    // all distances
+    // then approximates coverage as a circle, returning its radius
+    private double determineCoverage(String bssid, double accessPointLatitude, double accessPointLongitude) {
+
+       Cursor cursor = dbHelper.searchScanResultsForCoverage(Database.Table2.TABLE_NAME, bssid);
+        int length = cursor.getCount();
+        double[] scanLatitudes = new double[length];
+        double[] scanLongitudes = new double[length];
+        double[] distances = new double[length];
+
+        for (int i = 0; i < length; i++) {
+            distances[i] = convertToDistanceUsingDoubles(accessPointLatitude, accessPointLongitude,
+                            scanLatitudes[i], scanLongitudes[i]);
+        }
+
+        // calculate average or max, just decide
+        double coverageRadius = max(distances);
+        return coverageRadius;
+    }
+
+    // dunno if better using average or max
+    private double average(double[] values) {
+        double sum = 0;
+        for (double v : values) sum += v;
+        return sum / values.length;
+
+    }
+    // as above, returns -1 if values is empty, i'm using with distances so i know they must be > 0
+    private double max(double[] values) {
+        double max = -1;
+        for (double v : values)
+            if (v > max)  max = v ;
+
+        return max;
+
+    }
+
 }

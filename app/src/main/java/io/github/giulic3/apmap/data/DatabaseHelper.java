@@ -133,7 +133,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             // Insert the new row, returning the primary key value of the new row
             long newRowId = db.insertOrThrow(Database.Table2.TABLE_NAME, null, values);
             db.close();
-            Log.d("DEBUG", "newRowId: "+newRowId);
+            //Log.d("DEBUG", "newRowId: "+newRowId);
             return newRowId;
         }
 
@@ -195,7 +195,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     null,
                     null);
             int count = cursor.getCount();
-            Log.d("DEBUG", "count: "+count);
+            //Log.d("DEBUG", "count: "+count);
             // remember to close db AFTER closing cursor
             cursor.close();
             db.close();
@@ -213,9 +213,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
             if (cursor.moveToFirst()) {
                 do {
-                    Log.d("DEBUG", cursor.getString(0));
-                    Log.d("DEBUG", "lat: "+cursor.getString(4));
-                    Log.d("DEBUG", "lon: "+cursor.getString(5));
+                    Log.d("INFO", cursor.getString(0));
+                    Log.d("INFO", "lat: "+cursor.getString(4));
+                    Log.d("INFO", "lon: "+cursor.getString(5));
                 } while (cursor.moveToNext());
             }
 
@@ -233,12 +233,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
 
         // return all aps with lat/lon = null but a sufficient number of measures in ScanResult to perform triangulation
-        public Cursor getInputSetForTriangulation(){
+        public Cursor getInputSetForTrilateration(){
 
-            Log.d("DEBUG", "DatabaseHelper: getInputSetForTriangulation()");
+            Log.d("DEBUG", "DatabaseHelper: getInputSetForTrilateration()");
             SQLiteDatabase db = this.getReadableDatabase();
-            String query = "SELECT COUNT("+Database.Table1.TABLE_NAME+"."+Database.Table1.COLUMN_NAME_BSSID+"), "+
-                    Database.Table1.TABLE_NAME+"."+Database.Table1.COLUMN_NAME_BSSID+
+            String query = "SELECT COUNT("+Database.Table1.TABLE_NAME+"."+Database.Table1.COLUMN_NAME_BSSID+"), "+"*"+
+                    //Database.Table1.TABLE_NAME+"."+Database.Table1.COLUMN_NAME_BSSID+
                     " FROM "+Database.Table1.TABLE_NAME+" INNER JOIN "+Database.Table2.TABLE_NAME+" ON"+
                     " "+Database.Table1.TABLE_NAME+"."+Database.Table1.COLUMN_NAME_BSSID+" = "
                     + Database.Table2.TABLE_NAME+"."+Database.Table1.COLUMN_NAME_BSSID
@@ -247,12 +247,39 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     "GROUP BY "+Database.Table1.TABLE_NAME +"."+ Database.Table1.COLUMN_NAME_BSSID+
                     " HAVING COUNT("+Database.Table1.TABLE_NAME +"."+ Database.Table1.COLUMN_NAME_BSSID+") >= 3";
 
-            Log.d("DEBUG", "provaquery: "+query);
             Cursor cursor = db.rawQuery(query, null);
 
             // TODO: pensare a quale sia il modo migliore per restituire il set
             return cursor;
         }
+
+
+        // given a certain bssid, returns all scan entries for that bssid (similar to  previous, but previous
+        // returns ALL ENTRIES FOR EVERY BSSID)
+        // also similar to searchBssid()
+        public Cursor searchScanResultsForCoverage(String scanTableName, String bssid) {
+
+            Log.d("DEBUG", "DatabaseHelper: searchScanResultsForCoverage()");
+            SQLiteDatabase db = this.getReadableDatabase();
+            //String[] projection = {"*"};
+            String selection = Database.Table1.COLUMN_NAME_BSSID +" =?";
+            String[] selectionArgs = { bssid };
+            Cursor cursor = db.query(
+                    Database.Table1.TABLE_NAME,
+                    null,
+                    selection,
+                    selectionArgs,
+                    null,
+                    null,
+                    null);
+
+            return cursor;
+            // remember to close cursor!
+        }
+
+        // support function (for testing)
+        // used to remove double scanobjects (same lat and lon)
+        public void deleteDoubles(){}
 
         // class used to navigate a set of results (after a query)
         // TODO: consider inserting a switch...case and move here all the queries

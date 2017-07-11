@@ -30,6 +30,11 @@
                 android:layout_height="wrap_content"
                 android:layout_width="wrap_content"
                 android:text="collapse/expand" />
+            <Button
+                android:id="@+id/button_db"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="open db"/>
 
         </LinearLayout>
 
@@ -54,7 +59,7 @@
                 android:id="@+id/bssid"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:text="-"
+                android:text="BSSID: -"
                 android:textSize="16sp"
                 android:textAllCaps="true"
                 android:padding="16dp"/>
@@ -63,7 +68,7 @@
                 android:id="@+id/ssid"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="-"
+                android:text="SSID: -"
                 android:padding="16dp"
                 android:textSize="16sp"/>
 
@@ -71,7 +76,7 @@
                 android:id="@+id/capabilities"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="-"
+                android:text="CAPABILITIES: -"
                 android:padding="16dp"
                 android:textSize="16sp"/>
 
@@ -79,7 +84,7 @@
                 android:id="@+id/frequency"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="-"
+                android:text="FREQUENCY: -"
                 android:padding="16dp"
                 android:textSize="16sp"/>
 
@@ -87,7 +92,7 @@
                 android:id="@+id/level"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="-"
+                android:text="LEVEL: -"
                 android:padding="16dp"
                 android:textSize="16sp"/>
 
@@ -95,7 +100,7 @@
                 android:id="@+id/estimated_latitude"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="-"
+                android:text="LATITUDE: -"
                 android:padding="16dp"
                 android:textSize="16sp"/>
 
@@ -103,7 +108,7 @@
                 android:id="@+id/estimated_longitude"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="-"
+                android:text="LONGITUDE: -"
                 android:padding="16dp"
                 android:textSize="16sp"/>
 
@@ -111,7 +116,7 @@
                 android:id="@+id/coverage_radius"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="-"
+                android:text="COVERAGE RADIUS: -"
                 android:padding="16dp"
                 android:textSize="16sp"/>
 
