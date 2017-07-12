@@ -184,7 +184,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
             Log.d("DEBUG", "DatabaseHelper: searchBssid()");
             SQLiteDatabase db = this.getReadableDatabase();
-            String selection = Database.Table1.COLUMN_NAME_BSSID +" =?";
+            String selection = Database.Table1.COLUMN_NAME_BSSID +" = ?";
             String[] selectionArgs = { bssid };
             Cursor cursor = db.query(
                     Database.Table1.TABLE_NAME,
@@ -261,11 +261,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
             Log.d("DEBUG", "DatabaseHelper: searchScanResultsForCoverage()");
             SQLiteDatabase db = this.getReadableDatabase();
-            //String[] projection = {"*"};
-            String selection = Database.Table1.COLUMN_NAME_BSSID +" =?";
+            String selection = Database.Table1.COLUMN_NAME_BSSID +" = ?";
             String[] selectionArgs = { bssid };
             Cursor cursor = db.query(
-                    Database.Table1.TABLE_NAME,
+                    scanTableName,
                     null,
                     selection,
                     selectionArgs,
@@ -275,6 +274,38 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
             return cursor;
             // remember to close cursor!
+        }
+
+        // similar to searchBssid, maybe they can be grouped inside one query
+        public boolean searchBssidGivenLatLon(String bssid, double latitude, double longitude) {
+
+            Log.d("DEBUG", "DatabaseHelper: searchBssidGivenLatLon()");
+
+            SQLiteDatabase db = this.getReadableDatabase();
+            String stringLat = String.valueOf(latitude);
+            String stringLon = String.valueOf(longitude);
+            String selection = Database.Table1.COLUMN_NAME_BSSID +" = ?"+
+                    " AND "+Database.Table1.COLUMN_NAME_ESTIMATED_LATITUDE +" = ?"+
+                    " AND "+Database.Table1.COLUMN_NAME_ESTIMATED_LONGITUDE +" = ?";
+            String[] selectionArgs = { bssid, stringLat, stringLon };
+
+            Cursor cursor = db.query(
+                    Database.Table1.TABLE_NAME,
+                    null,
+                    selection,
+                    selectionArgs,
+                    null,
+                    null,
+                    null);
+
+            int count = cursor.getCount();
+            //Log.d("DEBUG", "count: "+count);
+            // remember to close db AFTER closing cursor
+            cursor.close();
+            db.close();
+            // check cursor size
+            if (count > 0) return true;
+            else return false;
         }
 
         // support function (for testing)

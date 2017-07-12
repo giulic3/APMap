@@ -19,6 +19,7 @@ import android.os.Message;
 import android.os.Process;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.model.LatLng;
@@ -34,13 +35,11 @@ import io.github.giulic3.apmap.data.UpdateDbTask;
 public class ApService extends Service {
 
     // used in conjunction with lastknownlocation to determine if can perform scansion
-    private static final long THREAD_SLEEP = 120000;
+    private static final long THREAD_SLEEP = 60000;
     private static final long SCAN_DISTANCE_INTERVAL = 10; //in metres TODO: common sense
-    private Looper mServiceLooper;
-    //private ServiceHandler mServiceHandler;
     private WifiManager mWifiManager;
     private WifiReceiver mWifiReceiver;
-    private Location previousLocation;
+    //private Location previousLocation;
     private Location mLastKnownLocation;
     private DatabaseHelper mDbHelper;
      // used to count number of scan performed, every 100 scans, will
@@ -94,11 +93,11 @@ public class ApService extends Service {
                         // increase thread_sleep because onreceive is much slower than thread
                         Log.d("DEBUG", "ApService: in thread startScan()");
                         // if they are null means it's the first scan, so we can proceed
-                        if ((previousLocation == null || mLastKnownLocation == null) ||
-                                convertToDistance(previousLocation, mLastKnownLocation) >= SCAN_DISTANCE_INTERVAL) {
-                            mWifiManager.startScan();
-                            SCAN_COUNTER++;
-                        }
+                        //if ((previousLocation == null || mLastKnownLocation == null) ||
+                        //        convertToDistance(previousLocation, mLastKnownLocation) >= SCAN_DISTANCE_INTERVAL) {
+                        mWifiManager.startScan();
+                        SCAN_COUNTER++;
+                        //}
 
                         Thread.sleep(THREAD_SLEEP);
 
@@ -167,7 +166,7 @@ public class ApService extends Service {
             String message = intent.getStringExtra("Status");
             Bundle b = intent.getBundleExtra("Location");
 
-            previousLocation = mLastKnownLocation;
+            //previousLocation = mLastKnownLocation;
             mLastKnownLocation = (Location) b.getParcelable("Location");
 
 
@@ -188,7 +187,7 @@ public class ApService extends Service {
         double φ1 = Math.toRadians(previousLatitude);
         double φ2 = Math.toRadians(currentLatitude);
         double Δφ = Math.toRadians(currentLatitude - previousLatitude);
-        double Δλ = Math.toRadians(currentLongitude-previousLongitude);
+        double Δλ = Math.toRadians(currentLongitude - previousLongitude);
 
         double a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
                 Math.cos(φ1) * Math.cos(φ2) *

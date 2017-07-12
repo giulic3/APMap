@@ -102,7 +102,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             mGoogleApiClient = ((LocationService.LocalBinder)service).getGoogleApiClient();
             isBound = true;
             requestLocationSettings();
-            Toast.makeText(MainActivity.this, "onServiceConnected()", Toast.LENGTH_LONG).show();
+            //Toast.makeText(MainActivity.this, "onServiceConnected()", Toast.LENGTH_LONG).show();
         }
 
         @Override
@@ -230,9 +230,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     // this method extracts data from db
     // and fill the map with aps markers, associating each marker
     // to an accesspointinfo object
-    private void populateMap() {
+    private void populateMap() { //OK
 
-        Log.d("DEBUG", "populateMap()");
+        Log.d("DEBUG", "MainActivity: populateMap()");
         apInfoList = new ArrayList<>();
         Cursor cursor = mDbHelper.getAll("AccessPointInfo");
         mMap.setOnMarkerClickListener(this);
@@ -248,6 +248,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                     Marker marker = mMap.addMarker(new MarkerOptions().position(
                             new LatLng(Double.parseDouble(latitude), Double.parseDouble(longitude))));
+
+                    int circleColor = getColor(cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_CAPABILITIES)));
                     // adding circle
                     Circle circle = mMap.addCircle(new CircleOptions()
                             .center(new LatLng(Double.parseDouble((latitude)), Double.parseDouble(longitude)))
@@ -273,25 +275,27 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             } while (cursor.moveToNext());
         }
         cursor.close();
-        // TODO:
-        // latitude and longitude must be null here not 0.0 jeez
-
-
-        // temporary: just to have a marker
-        Marker marker = mMap.addMarker(new MarkerOptions().position(
-                new LatLng(44.0, 11.0)));
-        AccessPointInfoEntry ap = new AccessPointInfoEntry("mac address", "mia-rete", "chiusa", 2400, 44.0, 11.0, 1.5);
-        marker.setTag(ap);
-
-        // adding circle shape (JUST TEMPORARY)
-        Circle circle = mMap.addCircle(new CircleOptions()
-                .center(new LatLng(44.0, 11.0))
-                .radius(10000)
-                .strokeColor(Color.TRANSPARENT)
-                .fillColor(Color.parseColor("#8014EE91")));
     }
+// not working
+    // returns -1 if neither close nor open (TODO: change)
+    private int getColor(String capabilities) {
+        // given capabilties of an ap, decide if the network is open or closed
+        // return red if close, else green
+        if (getAccessPointSecurity(capabilities).equals("CLOSED"))
+            return Color.parseColor("#FF6666");
+        if (getAccessPointSecurity(capabilities).equals("OPEN"))
+            return Color.parseColor("#8014EE91");
 
-
+        return -1;
+    }
+    // return open or closed according to network security
+    private String getAccessPointSecurity(String capabilities) {
+        if (capabilities.contains("WEP") || capabilities.contains("WPA") ||
+                capabilities.contains("WPA2"))
+            return "CLOSED";
+        else
+            return "OPEN";
+    }
     // on (generic) marker click callback MAYBE A RECYCLERVIEW OR A LISTVIEW?
     // questo modo di fare le cose fa schifo
     @Override
@@ -355,6 +359,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 //TODO: boilerplate
  public void requestLocationSettings(){
 
+     Log.d("DEBUG", "MainActivity: requestLocationSettings()");
+
     LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
             .addLocationRequest(mLocationRequest); //currently only high priority, give chance to choose
 
@@ -397,6 +403,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     //TODO: boilerplate
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+        Log.d("DEBUG", "MainActivity: onActivityResult()");
         final LocationSettingsStates states = LocationSettingsStates.fromIntent(intent);
         switch (requestCode) {
             case REQUEST_CHECK_SETTINGS:
