@@ -1,6 +1,6 @@
 package io.github.giulic3.apmap.data;
 
-// helper class type
+// helper class type //CHANGE NAME IN SCANRESULT
 public class AccessPoint {
 
     // ap info

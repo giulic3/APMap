@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <group> <!-- visualization methods , uso also android:icon-->
+        <item
+            android:id="@+id/show_all"
+            android:title = "Show all"/>
+         <!-- potrei anche fare show/hide-->
+        <item
+            android:id="@+id/show_open"
+            android:title="Show only open networks"/>
+        <item
+            android:id="@+id/show_closed"
+            android:title="Show only closed networks"/>
+        <item
+            android:id="@+id/show_range"
+            android:title="Show only access point in range"/>
+        <item
+            android:id="@+id/hide_coverage"
+            android:title="Hide coverage"/>
+        <item
+            android:id="@+id/show_coverage"
+            android:title="Show coverage"/>
+
+    </group>
+</menu>

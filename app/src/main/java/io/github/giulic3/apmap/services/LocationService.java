@@ -5,7 +5,6 @@ import android.app.Activity;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Binder;
@@ -14,7 +13,6 @@ import android.os.IBinder;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
@@ -170,9 +168,9 @@ public class LocationService extends Service implements LocationListener,
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         // these determines how often onLocationChanged() will be called,
         // time is in ms, aka 30 seconds */ //TODO: set time according to common sense and remove hardcoded numbers
-        mLocationRequest.setInterval(60000);
+        mLocationRequest.setInterval(30000);
         // 30 seconds
-        mLocationRequest.setFastestInterval(60000);
+        mLocationRequest.setFastestInterval(30000);
 
     }
 

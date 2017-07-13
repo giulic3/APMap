@@ -33,23 +33,27 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
     }
 
     // all the stuff to be done in background
-    protected Integer doInBackground(List<AccessPoint> ... aps) {
+    protected Integer doInBackground(List<AccessPoint> ... aps) { //TODO refactor method
 
-        test();
-        Log.d("DEBUG", "UpdateDbTask: doInBackground");
+        Log.d("DEBUG", "UpdateDbTask: doInBackground()");
+
         // for each ap found (note that the apList is in aps[0])
         for (int i = 0; i < aps[0].size(); i++) {
             // insert in db as scan object only if there wasn't already a scan for that bssid at those lat/lon
-            // look for a scanresult in scan table at a given lat lon //TODO: errore logico? unique (bssid, timestamp) non rispettato boh ora funziona
+            // look for a scanresult in scan table at a given lat lon
             boolean scanFound = dbHelper.searchBssidGivenLatLon(
                     aps[0].get(i).getBssid(), scanningLocation.getLatitude(), scanningLocation.getLongitude());
             // used to avoid doubles that mess with trilateration algorithm
             if (!scanFound) {
+                Log.d("DEBUG", "UpdateDbTask in scanFound: "+aps[0].get(i).getBssid()+" "+
+                    aps[0].get(i).getTimestamp());
+
                 dbHelper.insertScanObject(aps[0].get(i).getBssid(),
                         aps[0].get(i).getTimestamp(),
                         scanningLocation.getLatitude(),
                         scanningLocation.getLongitude(),
                         aps[0].get(i).getLevel());
+
             }
 
             // insert in db as accesspointinfo (only if it's the first time)
@@ -67,9 +71,9 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
         // printing all accesspointinfo entries
         dbHelper.printAll(Database.Table1.TABLE_NAME);
 
-        apList = aps[0]; // che succede ad aps[0] quando il metodo termina?
+        apList = aps[0];
 
-        // perform approximation every 100 scan
+        // perform approximation every 100 scan, anche meno volendo
         if (ApService.SCAN_COUNTER >= SCAN_LIMIT) {
             // i could move everything inside databasehelper TODO
             Cursor cursor = dbHelper.getInputSetForTrilateration();
@@ -94,8 +98,7 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
                     int frequency = cursor.getInt(cursor.getColumnIndexOrThrow(Database.Table1.COLUMN_NAME_FREQUENCY));
 
                     latLngs[j] = new LatLng(lat, lon);
-                    distances[j] = levelToDistance(level, frequency); // distance in km?
-                    // L'ALGORITMO USA METRI O KM?!
+                    distances[j] = levelToDistance(level, frequency);
 
                     if (j == 2)  {
                         LatLng res = getLocationByTrilateration(latLngs[0], distances[0], latLngs[1], distances[1], latLngs[2], distances[2]);
@@ -151,6 +154,8 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
     }
 
     // update on the map infos relative to given list of ap
+    // parameter is a list of access point (bssid) that were somehow updated
+    // e quelli che erano già sulla mappa? T_T TODO
     private void refreshMap(){
         Log.d("DEBUG", "UpdateDbTask: refreshMap()");
         // TODO:
@@ -325,12 +330,12 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
         double distanceInKilometres = distanceInMetres / 1000;
         return distanceInKilometres;
     }
-    // FOUND PROBLEM, scanLatitude and scanLongitude are 0.0!
-    private double convertToDistanceUsingDoubles(double accessPointLatitude, double accessPointLongitude,
+    // static? can't do better?
+    public static double convertToDistanceUsingDoubles(double accessPointLatitude, double accessPointLongitude,
                                                  double scanLatitude, double scanLongitude ) {
 
 
-        Log.d("DEBUG", "scanLatitude: "+scanLatitude+" scanLongitude: "+scanLongitude);
+        Log.d("DEBUG", "UpdateDbTask: scanLatitude: "+scanLatitude+" scanLongitude: "+scanLongitude);
         Log.d("DEBUG", "UpdateDbTask: convertToDistanceUsingDoubles()");
         double earthRadius = 6371000; // metres
         double φ1 = Math.toRadians(accessPointLatitude);
@@ -390,8 +395,10 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
         return max;
 
     }
+
+    /*
     public void test() {
-        // point to find is: 44.09, 11.13-
+        // point to find is: 44.09, 11.13
         double AP_LATITUDE = 44.09;
         double AP_LONGITUDE = 11.13;
 
@@ -404,6 +411,7 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
         double dist3 = convertToDistanceUsingDoubles(AP_LATITUDE, AP_LONGITUDE, latLng3.latitude, latLng3.longitude);
 
         LatLng result = getLocationByTrilateration(latLng1, dist1, latLng2, dist2, latLng3, dist3);
-        Log.d("DEBUG", "test(): "+result.latitude +" "+ result.longitude); // mi dovrebbe dare la posizione dell'ap
+        Log.d("DEBUG", "UpdateDbTask: test(): "+result.latitude +" "+ result.longitude); // mi dovrebbe dare la posizione dell'ap
     }
+    */
 }

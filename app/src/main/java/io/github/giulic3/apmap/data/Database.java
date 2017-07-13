@@ -24,7 +24,7 @@ public class Database {
     }
 
     public static class Table2 implements BaseColumns {
-        public static final String TABLE_NAME = "Scan"; // TODO CHANGE NAME AND RESET DATABASE
+        public static final String TABLE_NAME = "ScanResult"; // TODO CHANGE NAME AND RESET DATABASE, maybe "scanobject"
         public static final String COLUMN_NAME_BSSID = "bssid";
         public static final String COLUMN_NAME_TIMESTAMP = "timestamp";
         public static final String COLUMN_NAME_SCAN_LATITUDE = "scanLatitude";

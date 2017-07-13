@@ -155,7 +155,7 @@ public class ApService extends Service {
             }
 
             DatabaseHelper mDbHelper = new DatabaseHelper(ApService.this);
-            new UpdateDbTask(mDbHelper, mLastKnownLocation).execute(apList);
+            new UpdateDbTask(mDbHelper, mLastKnownLocation).execute(apList);  //maybe aplist is not updated?
         }
     }
 

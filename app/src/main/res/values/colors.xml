@@ -4,6 +4,6 @@
     <color name="colorPrimaryDark">#303F9F</color>
     <color name="colorAccent">#FF4081</color>
 
-    <color name="bottom_sheet_background">#ff4081</color>
+    <color name="bottom_sheet_background">#FAEBD7</color>
 
 </resources>
