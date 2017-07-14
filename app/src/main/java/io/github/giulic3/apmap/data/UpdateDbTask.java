@@ -1,29 +1,36 @@
 package io.github.giulic3.apmap.data;
 
+import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
 import android.location.Location;
 import android.os.AsyncTask;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.google.android.gms.maps.model.LatLng;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
-import io.github.giulic3.apmap.data.AccessPoint;
+import io.github.giulic3.apmap.activities.MainActivity;
 import io.github.giulic3.apmap.services.ApService;
 
 
 public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
 
     // device location when ap scanning started
-    Location scanningLocation;
+    Location scanningLocation; // default modifier is 'package-private'
     DatabaseHelper dbHelper;
+    Context mContext;
+
     List<AccessPoint> apList;
     private static final int SCAN_LIMIT = 100;
+    private ArrayList<String> updatedApBssid; // contiene i bssid degli apinfoentry che ora hanno lat/lon/coverage
+    // usata per aggiornar i marker sulla mappa
 
     // my own constructor
-    public UpdateDbTask(DatabaseHelper dbHelper, Location scanningLocation) {
+    public UpdateDbTask(Context context, DatabaseHelper dbHelper, Location scanningLocation) {
+        this.mContext = context;
         this.dbHelper = dbHelper;
         this.scanningLocation = scanningLocation;
     }
@@ -36,22 +43,25 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
     protected Integer doInBackground(List<AccessPoint> ... aps) { //TODO refactor method
 
         Log.d("DEBUG", "UpdateDbTask: doInBackground()");
-
+        dbHelper.printAll(Database.Table2.TABLE_NAME);
+        updatedApBssid = new ArrayList<String>();
         // for each ap found (note that the apList is in aps[0])
         for (int i = 0; i < aps[0].size(); i++) {
             // insert in db as scan object only if there wasn't already a scan for that bssid at those lat/lon
             // look for a scanresult in scan table at a given lat lon
+            double lat = scanningLocation.getLatitude();
+            double lon = scanningLocation.getLongitude();
+
             boolean scanFound = dbHelper.searchBssidGivenLatLon(
-                    aps[0].get(i).getBssid(), scanningLocation.getLatitude(), scanningLocation.getLongitude());
+                    aps[0].get(i).getBssid(), lat, lon);
             // used to avoid doubles that mess with trilateration algorithm
             if (!scanFound) {
-                Log.d("DEBUG", "UpdateDbTask in scanFound: "+aps[0].get(i).getBssid()+" "+
-                    aps[0].get(i).getTimestamp());
+                Log.d("DEBUG", "UpdateDbTask in scanFound");
 
                 dbHelper.insertScanObject(aps[0].get(i).getBssid(),
                         aps[0].get(i).getTimestamp(),
-                        scanningLocation.getLatitude(),
-                        scanningLocation.getLongitude(),
+                        lat,
+                        lon,
                         aps[0].get(i).getLevel());
 
             }
@@ -69,7 +79,7 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
         // printing all scanobject entries
         //dbHelper.printAll(Database.Table2.TABLE_NAME);
         // printing all accesspointinfo entries
-        dbHelper.printAll(Database.Table1.TABLE_NAME);
+        //dbHelper.printAll(Database.Table1.TABLE_NAME);
 
         apList = aps[0];
 
@@ -108,7 +118,15 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
                         if (!Double.isNaN(res.latitude) && !Double.isNaN(res.longitude)) {
                             // update coverage
                             double coverageRadius = determineCoverage(currentBssid, res.latitude, res.longitude);
-                            dbHelper.updateAp(currentBssid, null, null, res.latitude, res.longitude, coverageRadius);
+                            if (coverageRadius > 400 ) { // PATCH TODO
+                                //HARDCODED
+                                coverageRadius = 50; // metto valore standard perché se lo lascio null mi ritrovo una nullpointerex
+                                // quando vado a riempire mCircles nella mainactivity
+                                dbHelper.updateAp(currentBssid, null, null, res.latitude, res.longitude, coverageRadius);
+                                //IL PROBLEMA È CHE DOPO NON LA AGGIORNERÀ MAI PIÙ LA COVERAGE, QUINDI NON VA BENE!
+                                updatedApBssid.add(currentBssid); // add to list  of updated bssid
+
+                            }
 
                         }
                         // then go to next bssid
@@ -135,6 +153,7 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
 
             // TODO bad habit to assign a public field like this
             ApService.SCAN_COUNTER = 0;
+            cursor.close();
         }
 
         dbHelper.close();
@@ -147,69 +166,19 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
 
     }
 
+    //TODO: e quelli che erano già sulla mappa? casino (può succedere se c'è un cambio di ssid ad es. o se si prevede
+    // un miglioramento dell'approssimazione della posizione
     protected void onPostExecute(Void... result) {
         Log.d("DEBUG", "UpdateDbTask: onPostExecute");
+
         // update map on the ui thread involving only scanned aps
-        refreshMap();
-    }
-
-    // update on the map infos relative to given list of ap
-    // parameter is a list of access point (bssid) that were somehow updated
-    // e quelli che erano già sulla mappa? T_T TODO
-    private void refreshMap(){
-        Log.d("DEBUG", "UpdateDbTask: refreshMap()");
-        // TODO:
-        // find marker by bssid, must update marker objects and graphical markers
-
-        // move marker, update info on bottomsheet or list
-    }
-
-
-
-    private void updateAccessPointPosition(){
-
-        Log.d("DEBUG", "UpdateDbTask: updateAccessPointPosition()");
-    }
-/*
-    // given an array of n objects (lat+lon+level in metres) that corresponds to a certain bssid (ap)
-    private LatLng performTriangulation(LatLng[] latLngs, double[] distances) {
-
-        double[][] positions = new double[latLngs.length][3]; // tante righe quante le misure, e tre colonne
-        // le 3 dimensioni x,y,z
-
-        double earthRadius = 6371; // in km
-        // convert latlng to cartesian points and fill in positions array
-        // also convert distances (in m/km) to absolutes
-        for (int i = 0; i < latLngs.length - 1 ; i++) {
-
-            double lat = latLngs[i].latitude;
-            double lon = latLngs[i].longitude;
-
-            double x = earthRadius * (Math.cos(Math.toRadians(lat)) * Math.cos(Math.toRadians(lon)));
-            double y = earthRadius * (Math.cos(Math.toRadians(lat)) * Math.sin(Math.toRadians(lon)));
-            double z = earthRadius * (Math.sin(Math.toRadians(lat)));
-            positions[i][0] = x;
-            positions[i][1] = y;
-            positions[i][2] = z;
-        }
-
-        NonLinearLeastSquaresSolver solver = new NonLinearLeastSquaresSolver(
-                new TrilaterationFunction(positions, distances), new LevenbergMarquardtOptimizer());
-        LeastSquaresOptimizer.Optimum optimum = solver.solve();
-
-        // the answer
-        double[] centroid = optimum.getPoint().toArray();
-
-        double resultX = centroid[0];
-        double resultY = centroid[1];
-        double resultZ = centroid[2];
-        LatLng result = new LatLng(Math.asin(resultZ / earthRadius),
-                                 Math.atan2(resultY, resultX));
-
-        return result;
+        // mContext refers to ApService that started the asynctask instance
+        //Intent intent = new Intent(mContext, MainActivity.class);
+        Intent intent = new Intent("DatabaseUpdates");
+        intent.putStringArrayListExtra("updatedApBssid", updatedApBssid);
+        LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
 
     }
-*/
 
 // EFFICIENTE MUOVENDOSI DI POCO, NON SO CON GROSSE VARIAZIONI DI LAT/LON, mettere scansione veloce
 // taken from stackoverflow, must give credit to author, distances in km?
@@ -354,6 +323,7 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
     // given a set of scan results for a certain bssid, this method returns the average among
     // all distances
     // then approximates coverage as a circle, returning its radius
+    // now using patch per evitare di aggiornare con valori troppo sfasati, finché non si è capito il problema TODO
     private double determineCoverage(String bssid, double accessPointLatitude, double accessPointLongitude) {
 
        Cursor cursor = dbHelper.searchScanResultsForCoverage(Database.Table2.TABLE_NAME, bssid);
@@ -361,12 +331,11 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
         double[] scanLatitudes = new double[length];
         double[] scanLongitudes = new double[length];
         double[] distances = new double[length];
-        //idiota, se non le inizializzi!
+
         if (cursor.moveToFirst()) { //IMPORTANTE, ALLA FINE DI UNA QUERY IL CURSOR È POSIZIONATO A -1
             for (int i = 0; i < length; i++) { // come fa length a essere 15? al max 3 boh
 
                 scanLatitudes[i] = cursor.getDouble(cursor.getColumnIndexOrThrow(Database.Table2.COLUMN_NAME_SCAN_LATITUDE));
-                ;
                 scanLongitudes[i] = cursor.getDouble(cursor.getColumnIndexOrThrow(Database.Table2.COLUMN_NAME_SCAN_LONGITUDE));
 
                 distances[i] = convertToDistanceUsingDoubles(accessPointLatitude, accessPointLongitude,
@@ -376,6 +345,7 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
 
         // calculate average or max, just decide
         double coverageRadius = max(distances);
+
         return coverageRadius;
     }
 
@@ -395,23 +365,4 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
         return max;
 
     }
-
-    /*
-    public void test() {
-        // point to find is: 44.09, 11.13
-        double AP_LATITUDE = 44.09;
-        double AP_LONGITUDE = 11.13;
-
-        LatLng latLng1 = new LatLng(44.11, 11.11);
-        LatLng latLng2 = new LatLng(44.13, 11.09);
-        LatLng latLng3 = new LatLng(44.2, 11.2);
-        // baro sul calcolo delle distanze
-        double dist1 = convertToDistanceUsingDoubles(AP_LATITUDE, AP_LONGITUDE, latLng1.latitude, latLng1.longitude);
-        double dist2 = convertToDistanceUsingDoubles(AP_LATITUDE, AP_LONGITUDE, latLng2.latitude, latLng2.longitude);
-        double dist3 = convertToDistanceUsingDoubles(AP_LATITUDE, AP_LONGITUDE, latLng3.latitude, latLng3.longitude);
-
-        LatLng result = getLocationByTrilateration(latLng1, dist1, latLng2, dist2, latLng3, dist3);
-        Log.d("DEBUG", "UpdateDbTask: test(): "+result.latitude +" "+ result.longitude); // mi dovrebbe dare la posizione dell'ap
-    }
-    */
 }

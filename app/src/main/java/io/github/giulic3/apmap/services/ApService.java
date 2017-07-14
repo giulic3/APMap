@@ -95,6 +95,7 @@ public class ApService extends Service {
                         // if they are null means it's the first scan, so we can proceed
                         //if ((previousLocation == null || mLastKnownLocation == null) ||
                         //        convertToDistance(previousLocation, mLastKnownLocation) >= SCAN_DISTANCE_INTERVAL) {
+
                         mWifiManager.startScan();
                         SCAN_COUNTER++;
                         //}
@@ -155,7 +156,11 @@ public class ApService extends Service {
             }
 
             DatabaseHelper mDbHelper = new DatabaseHelper(ApService.this);
-            new UpdateDbTask(mDbHelper, mLastKnownLocation).execute(apList);  //maybe aplist is not updated?
+            Context mContext = getApplicationContext();
+            new UpdateDbTask(mContext, mDbHelper, mLastKnownLocation).execute(apList);
+
+            Toast toast = Toast.makeText(getApplicationContext(), "Database updated", Toast.LENGTH_SHORT);
+            toast.show();
         }
     }
 

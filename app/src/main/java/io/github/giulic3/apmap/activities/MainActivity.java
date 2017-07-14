@@ -28,7 +28,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.google.android.gms.common.api.PendingResult;
 import com.google.android.gms.common.api.ResultCallback;
@@ -58,11 +57,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import io.github.giulic3.apmap.R;
-import io.github.giulic3.apmap.data.AccessPoint;
 import io.github.giulic3.apmap.data.AccessPointInfoEntry;
 import io.github.giulic3.apmap.data.Database;
 import io.github.giulic3.apmap.data.DatabaseHelper;
-import io.github.giulic3.apmap.data.UpdateDbTask;
 import io.github.giulic3.apmap.helpers.VisualizationHelper;
 import io.github.giulic3.apmap.services.ApService;
 import io.github.giulic3.apmap.services.LocationService;
@@ -71,7 +68,7 @@ import static com.google.android.gms.common.ConnectionResult.SERVICE_MISSING;
 import static com.google.android.gms.common.ConnectionResult.NETWORK_ERROR;
 import static com.google.android.gms.common.ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED;
 
-// this activity has the following responsibilities used as a View/Controller:
+// this activity has the following responsibilities used as a View/Controller: (oh my GodClass)
 // - inflates layout(s)
 // - starts and communicates with services
 // - handles events (scan)
@@ -80,6 +77,7 @@ import static com.google.android.gms.common.ConnectionResult.SERVICE_VERSION_UPD
 
 // TODO consider using recyclerview or listview for bottomsheet
 // TODO reorder or split methods
+// TODO add clear marker in onDestroy or onStop
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
 
     private GoogleMap mMap;
@@ -90,7 +88,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private GoogleApiClient mGoogleApiClient;
     boolean isBound = false;
     boolean isFirstUpdate = true; // true if locationChanged for the first time (patch)
-    DatabaseHelper mDbHelper;
+    private DatabaseHelper mDbHelper;
     private Button mButton;
     private List<AccessPointInfoEntry> apInfoList;
     private ArrayList<Marker> mMarkerArray; //used to save all the markers on map
@@ -143,18 +141,22 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // starts apservice
         startService(new Intent(this, ApService.class));
 
+        // register for broadcasts
         LocalBroadcastManager.getInstance(MainActivity.this).registerReceiver(
                 mLocationReceiver, new IntentFilter("GPSLocationUpdates"));
        // LocalBroadcastManager.getInstance(MainActivity.this).registerReceiver(
           //      mApReceiver, new IntentFilter("AccessPointsUpdates"));
+        LocalBroadcastManager.getInstance(MainActivity.this).registerReceiver(mDatabaseUpdatesReceiver,
+                new IntentFilter("DatabaseUpdates"));
 
-        // get reference to helper object
+        // get reference to dbhelper object
         mDbHelper = new DatabaseHelper(MainActivity.this);
 
         View bottomSheet = findViewById(R.id.ap_bottom_sheet);
         mBottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
         mBottomSheetBehavior.setPeekHeight(0); // key line
 
+        //temporary: must disappear
         mButton = (Button) findViewById(R.id.button);
         mButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -205,6 +207,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
         LocalBroadcastManager.getInstance(MainActivity.this).unregisterReceiver(mLocationReceiver);
+        LocalBroadcastManager.getInstance(MainActivity.this).unregisterReceiver(mDatabaseUpdatesReceiver);
+
     }
 
 
@@ -224,6 +228,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mMap.clear();
+    }
+
+    @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.visualization_options_menu, menu);
@@ -232,7 +242,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle item selection
+        // handle item selection
         switch (item.getItemId()) {
             case R.id.show_all:
                 mVisualizationHelper.showAll(mMarkerArray);
@@ -258,6 +268,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
+    // TODO: vuoto così è inutile, si può spostare il contenuto altrove
     // this method contains all the commands to customize the map
     private void setUpMap() {
 
@@ -278,6 +289,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Log.d("DEBUG", "MainActivity: populateMap()");
         apInfoList = new ArrayList<AccessPointInfoEntry>();
         mMarkerArray = new ArrayList<Marker>();
+        mCircles = new ArrayList<Circle>();
 
         /*
         mDbHelper.deleteEntryBySsid("FASTWEB-1-5FF33F", Database.Table1.TABLE_NAME); // TO REMOVEE
@@ -286,6 +298,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mDbHelper.deleteEntry("a6:b1:e9:9d:8a:ed", Database.Table2.TABLE_NAME);
         mDbHelper.deleteEntry("c6:ea:1d:5f:f3:40", Database.Table1.TABLE_NAME);
         mDbHelper.deleteEntry("c6:ea:1d:5f:f3:40", Database.Table2.TABLE_NAME);
+        mDbHelper.deleteEntry("c4:ea:1d:5f:f3:3f", Database.Table1.TABLE_NAME);
+        mDbHelper.deleteEntry("c4:ea:1d:5f:f3:3f", Database.Table2.TABLE_NAME);
         */
         Cursor cursor = mDbHelper.getAll(Database.Table1.TABLE_NAME);
         mMap.setOnMarkerClickListener(this);
@@ -303,44 +317,53 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     String securityType = getAccessPointSecurityType(capabilities);
 
                     // setting marker color NOT IN FUNCTION
+                    /*
                     float markerColor = 0.0f;
                     if (securityType.equals("open")) markerColor = BitmapDescriptorFactory.HUE_GREEN;
                         else markerColor = BitmapDescriptorFactory.HUE_RED;
-
-                    Marker marker = mMap.addMarker(new MarkerOptions()
-                            .position(new LatLng(Double.parseDouble(latitude), Double.parseDouble(longitude)))
-                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
-
-                    // setting circle coverage and circle color
-                    int circleColor = getColor(cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_CAPABILITIES)));
-                    // adding circle
-                    Circle circle = mMap.addCircle(new CircleOptions()
-                            .center(new LatLng(Double.parseDouble((latitude)), Double.parseDouble(longitude)))
-                            .radius(Double.parseDouble(coverageRadius))
-                            .strokeColor(Color.TRANSPARENT)
-                            .fillColor(circleColor)
-                            .zIndex(1.0f)); // color depends on capabilities
-                    // green ones have higher z-index(?)
-                    // prepare object to associate to map marker
-                    // no lat/lon, no need to associate object, will be done when refreshing map
-                    apInfoList.add(new AccessPointInfoEntry(
-                            cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_BSSID)),
-                            cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_SSID)),
-                            cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_CAPABILITIES)),
-                            cursor.getInt(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_FREQUENCY)),
-                            cursor.getDouble(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LATITUDE)),
-                            cursor.getDouble(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LONGITUDE)),
-                            cursor.getDouble(cursor.getColumnIndex((Database.Table1.COLUMN_NAME_COVERAGE_RADIUS)))));
-
-                    marker.setTag(apInfoList.get(apInfoList.size() - 1));
-                    // adding marker to array: also for circles?
-                    mMarkerArray.add(marker);
-                    mCircles.add(circle);
+                    */
+                    addMarker(cursor, Double.parseDouble(latitude), Double.parseDouble(longitude),
+                            Double.parseDouble(coverageRadius));
                 }
 
             } while (cursor.moveToNext());
         }
         cursor.close();
+    }
+
+    private void addMarker(Cursor cursor, Double latitude, Double longitude, Double coverageRadius){
+
+        Marker marker = mMap.addMarker(new MarkerOptions()
+                .position(new LatLng(latitude, longitude))
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
+
+        // setting circle coverage and circle color
+        int circleColor = getColor(cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_CAPABILITIES)));
+        // adding circle
+        Circle circle = mMap.addCircle(new CircleOptions()
+                .center(new LatLng(latitude, longitude))
+                .radius(coverageRadius)
+                .strokeColor(Color.TRANSPARENT)
+                .fillColor(circleColor)
+                .zIndex(1.0f)); // color depends on capabilities
+        // green ones have higher z-index(?)
+        // prepare object to associate to map marker
+        // no lat/lon, no need to associate object, will be done when refreshing map
+        apInfoList.add(new AccessPointInfoEntry(
+                cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_BSSID)),
+                cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_SSID)),
+                cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_CAPABILITIES)),
+                cursor.getInt(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_FREQUENCY)), //following two can be replaced
+                cursor.getDouble(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LATITUDE)),
+                cursor.getDouble(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LONGITUDE)),
+                cursor.getDouble(cursor.getColumnIndex((Database.Table1.COLUMN_NAME_COVERAGE_RADIUS)))));
+
+        marker.setTag(apInfoList.get(apInfoList.size() - 1));
+        // adding marker to array: also for circles?
+        mMarkerArray.add(marker);
+        mCircles.add(circle);
+
+
     }
 // not working
     private int getColor(String capabilities) {
@@ -403,7 +426,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mMap = googleMap;
         setUpMap();
     }
-
+    // BROADCAST RECEIVERS
     private BroadcastReceiver mLocationReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -422,53 +445,74 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     };
 
+    private BroadcastReceiver mDatabaseUpdatesReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            ArrayList<String> updatedApBssid = intent.getStringArrayListExtra("updatedApBssid");
+
+            for (int i = 0; i < updatedApBssid.size(); i++) {
+
+                if ((apInfoList != null) && (mMarkerArray != null) && (mCircles != null)) {
+
+                    Cursor cursor = mDbHelper.getBssid(Database.Table1.TABLE_NAME, updatedApBssid.get(i));
+                    //save lat, lon and everything else
+
+                    double lat = cursor.getDouble(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LATITUDE));
+                    double lon = cursor.getDouble(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LONGITUDE));
+                    double radius = cursor.getDouble(cursor.getColumnIndex((Database.Table1.COLUMN_NAME_COVERAGE_RADIUS)));
+                    addMarker(cursor, lat, lon, radius );
+                }
+            }
+        }
+    };
+
     protected static final int REQUEST_CHECK_SETTINGS = 0x1;
 
     // this method creates a Location Settings Request specifying all kinds of requests that will be asked
-//TODO: boilerplate
- public void requestLocationSettings(){
+    //TODO: boilerplate
+     public void requestLocationSettings(){
 
-     Log.d("DEBUG", "MainActivity: requestLocationSettings()");
+         Log.d("DEBUG", "MainActivity: requestLocationSettings()");
 
-    LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
-            .addLocationRequest(mLocationRequest); //currently only high priority, give chance to choose
+        LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
+                .addLocationRequest(mLocationRequest); //currently only high priority, give chance to choose
 
-    PendingResult<LocationSettingsResult> result =
-            LocationServices.SettingsApi.checkLocationSettings(mGoogleApiClient, builder.build());
+        PendingResult<LocationSettingsResult> result =
+                LocationServices.SettingsApi.checkLocationSettings(mGoogleApiClient, builder.build());
 
-    result.setResultCallback(new ResultCallback<LocationSettingsResult>() {
-        @Override
-        public void onResult(LocationSettingsResult result) {
-            final Status status = result.getStatus();
-            final LocationSettingsStates locationSettingsStates = result.getLocationSettingsStates();
-            switch (status.getStatusCode()) {
-                case LocationSettingsStatusCodes.SUCCESS:
-                    // All location settings are satisfied. The client can initialize location
-                    // requests here.
-                 //...
-                    break;
-                case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
-                    // Location settings are not satisfied. But could be fixed by showing the user
-                    // a dialog.
-                    try {
-                        // Show the dialog by calling startResolutionForResult(),
-                        // and check the result in onActivityResult().
-                        status.startResolutionForResult(
-                                MainActivity.this,
-                                REQUEST_CHECK_SETTINGS);
-                    } catch (IntentSender.SendIntentException e) {
-                        // Ignore the error.
-                    }
-                    break;
-                case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
-                    // Location settings are not satisfied. However, we have no way to fix the
-                    // settings so we won't show the dialog.
-                    //...
-                    break;
+        result.setResultCallback(new ResultCallback<LocationSettingsResult>() {
+            @Override
+            public void onResult(LocationSettingsResult result) {
+                final Status status = result.getStatus();
+                final LocationSettingsStates locationSettingsStates = result.getLocationSettingsStates();
+                switch (status.getStatusCode()) {
+                    case LocationSettingsStatusCodes.SUCCESS:
+                        // All location settings are satisfied. The client can initialize location
+                        // requests here.
+                     //...
+                        break;
+                    case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
+                        // Location settings are not satisfied. But could be fixed by showing the user
+                        // a dialog.
+                        try {
+                            // Show the dialog by calling startResolutionForResult(),
+                            // and check the result in onActivityResult().
+                            status.startResolutionForResult(
+                                    MainActivity.this,
+                                    REQUEST_CHECK_SETTINGS);
+                        } catch (IntentSender.SendIntentException e) {
+                            // Ignore the error.
+                        }
+                        break;
+                    case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
+                        // Location settings are not satisfied. However, we have no way to fix the
+                        // settings so we won't show the dialog.
+                        //...
+                        break;
+                }
             }
-        }
-    });
-}
+        });
+    }
     //TODO: boilerplate
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {

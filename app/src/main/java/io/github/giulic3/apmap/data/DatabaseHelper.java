@@ -114,9 +114,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     // query4: insert entry in Scan table
     public long insertScanObject(String bssid, long timestamp,
-                                 Double scanLatitude, Double scanLongitude, int level) {
+                                 double scanLatitude, double scanLongitude, int level) {
 
-        //Log.d("DEBUG", "DatabaseHelper: insertScanObject()");
+        Log.d("DEBUG", "DatabaseHelper: insertScanObject()");
 
         // Gets the data repository in write mode
         SQLiteDatabase db = this.getWritableDatabase();
@@ -206,6 +206,25 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         else return false;
     }
 
+    // helper
+    // query8: look for a specific bssid in a table returns true if the searched ap is found
+    public Cursor getBssid(String tableName, String bssid) {
+
+        SQLiteDatabase db = this.getReadableDatabase();
+        String selection = Database.Table1.COLUMN_NAME_BSSID +" = ?";
+        String[] selectionArgs = { bssid };
+        Cursor cursor = db.query(
+                Database.Table1.TABLE_NAME,
+                null,
+                selection,
+                selectionArgs,
+                null,
+                null,
+                null);
+
+        return cursor;
+    }
+
     // query9: prints all entries of a table (used for debugging)
     public void printAll(String tableName) {
         Log.d("DEBUG", "DatabaseHelper: printAll()");
@@ -215,12 +234,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         if (cursor.moveToFirst()) {
             do {
-                Log.d("INFO", cursor.getString(0));
+                Log.d("INFO", "bssid :"+ cursor.getString(0));
                 Log.d("INFO", cursor.getString(1));
                 Log.d("INFO", cursor.getString(2));
                 Log.d("INFO", cursor.getString(3));
-                Log.d("INFO", "lat: "+cursor.getString(4));
-                Log.d("INFO", "lon: "+cursor.getString(5));
+                Log.d("INFO", "lat: "+cursor.getDouble(4));
+                Log.d("INFO", "lon: "+cursor.getDouble(5));
             } while (cursor.moveToNext());
         }
 
@@ -289,11 +308,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getReadableDatabase();
         String stringLat = String.valueOf(latitude); // maybe the problem is this conversion?
         String stringLon = String.valueOf(longitude);
+        Log.d("DEBUG", "searchBssidGivenLatLon lat :"+latitude+" lon: "+longitude);
+        Log.d("DEBUG", "searchBssidGivenLatLon Stringlat :"+stringLat+" Stringlon: "+stringLon );
         String selection = Database.Table2.COLUMN_NAME_BSSID +" = ?"+
                 " AND "+Database.Table2.COLUMN_NAME_SCAN_LATITUDE +" = ?"+
                 " AND "+Database.Table2.COLUMN_NAME_SCAN_LONGITUDE +" = ?";
-        String[] selectionArgs = { bssid, stringLat, stringLon };
 
+        String[] selectionArgs = { bssid, stringLat, stringLon };
+        /*
         Cursor cursor = db.query(
                 Database.Table2.TABLE_NAME,
                 null,
@@ -302,15 +324,27 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 null,
                 null,
                 null);
+        */
 
+        // prova con rawQuery
+        Cursor cursor = db.rawQuery("SELECT * FROM "+Database.Table2.TABLE_NAME+" WHERE "+
+                Database.Table2.COLUMN_NAME_BSSID +" = ?"+
+                " AND "+Database.Table2.COLUMN_NAME_SCAN_LATITUDE +" = ?"+
+                " AND "+Database.Table2.COLUMN_NAME_SCAN_LONGITUDE +" = ?",
+                new String[] {bssid, stringLat, stringLon});
+        /*
+        Log.d("SELECTION", "SELECT * FROM "+Database.Table2.TABLE_NAME+" WHERE "+
+                Database.Table2.COLUMN_NAME_BSSID +" = "+bssid+
+                " AND "+Database.Table2.COLUMN_NAME_SCAN_LATITUDE +" = "+stringLat+
+                " AND "+Database.Table2.COLUMN_NAME_SCAN_LONGITUDE +" = "+stringLon);
+        */
         int numberOfRows = cursor.getCount(); // conto le righe
         Log.d("DEBUG", "count: "+numberOfRows);
         // remember to close db AFTER closing cursor
-        //cursor.close();
+        cursor.close();
         db.close();
         // check cursor size
-        //if (numberOfRows > 0) return true;
-        if (cursor.moveToFirst()) return true;
+        if (numberOfRows > 0) return true;
         else return false; // returns false if no ap was found
     }
 
