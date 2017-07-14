@@ -234,12 +234,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         if (cursor.moveToFirst()) {
             do {
-                Log.d("INFO", "bssid :"+ cursor.getString(0));
+                Log.d("INFO", cursor.getString(0));
                 Log.d("INFO", cursor.getString(1));
                 Log.d("INFO", cursor.getString(2));
                 Log.d("INFO", cursor.getString(3));
-                Log.d("INFO", "lat: "+cursor.getDouble(4));
-                Log.d("INFO", "lon: "+cursor.getDouble(5));
+                Log.d("INFO", ""+cursor.getDouble(4));
+                Log.d("INFO", ""+cursor.getDouble(5));
             } while (cursor.moveToNext());
         }
 
@@ -301,45 +301,26 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     // WORKS ONLY WITH SCANRESULT TABLE
     // similar to searchBssid, maybe they can be grouped inside one query
+    // dà true solo se lat/lon sono diverse dalla 3 cifra decimale in su (seconda, prima...)
     public boolean searchBssidGivenLatLon(String bssid, double latitude, double longitude) {
 
         //Log.d("DEBUG", "DatabaseHelper: searchBssidGivenLatLon()");
 
         SQLiteDatabase db = this.getReadableDatabase();
-        String stringLat = String.valueOf(latitude); // maybe the problem is this conversion?
+
+        String stringLat = String.valueOf(latitude);
         String stringLon = String.valueOf(longitude);
         Log.d("DEBUG", "searchBssidGivenLatLon lat :"+latitude+" lon: "+longitude);
         Log.d("DEBUG", "searchBssidGivenLatLon Stringlat :"+stringLat+" Stringlon: "+stringLon );
-        String selection = Database.Table2.COLUMN_NAME_BSSID +" = ?"+
-                " AND "+Database.Table2.COLUMN_NAME_SCAN_LATITUDE +" = ?"+
-                " AND "+Database.Table2.COLUMN_NAME_SCAN_LONGITUDE +" = ?";
 
-        String[] selectionArgs = { bssid, stringLat, stringLon };
-        /*
-        Cursor cursor = db.query(
-                Database.Table2.TABLE_NAME,
-                null,
-                selection,
-                selectionArgs,
-                null,
-                null,
-                null);
-        */
-
-        // prova con rawQuery
         Cursor cursor = db.rawQuery("SELECT * FROM "+Database.Table2.TABLE_NAME+" WHERE "+
                 Database.Table2.COLUMN_NAME_BSSID +" = ?"+
                 " AND "+Database.Table2.COLUMN_NAME_SCAN_LATITUDE +" = ?"+
                 " AND "+Database.Table2.COLUMN_NAME_SCAN_LONGITUDE +" = ?",
                 new String[] {bssid, stringLat, stringLon});
-        /*
-        Log.d("SELECTION", "SELECT * FROM "+Database.Table2.TABLE_NAME+" WHERE "+
-                Database.Table2.COLUMN_NAME_BSSID +" = "+bssid+
-                " AND "+Database.Table2.COLUMN_NAME_SCAN_LATITUDE +" = "+stringLat+
-                " AND "+Database.Table2.COLUMN_NAME_SCAN_LONGITUDE +" = "+stringLon);
-        */
+
         int numberOfRows = cursor.getCount(); // conto le righe
-        Log.d("DEBUG", "count: "+numberOfRows);
+        Log.d("DEBUG", "searchBssidGivenLatLon(): count: "+numberOfRows);
         // remember to close db AFTER closing cursor
         cursor.close();
         db.close();

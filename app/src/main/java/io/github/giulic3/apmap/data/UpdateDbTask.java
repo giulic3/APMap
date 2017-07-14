@@ -24,7 +24,8 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
     Context mContext;
 
     List<AccessPoint> apList;
-    private static final int SCAN_LIMIT = 100;
+    AccessPoint apProva;
+    private static final int SCAN_LIMIT = 50;
     private ArrayList<String> updatedApBssid; // contiene i bssid degli apinfoentry che ora hanno lat/lon/coverage
     // usata per aggiornar i marker sulla mappa
 
@@ -45,15 +46,20 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
         Log.d("DEBUG", "UpdateDbTask: doInBackground()");
         dbHelper.printAll(Database.Table2.TABLE_NAME);
         updatedApBssid = new ArrayList<String>();
+
+        //TEMPORANEO, TOGLIERE
+        apProva = aps[0].get(0); //il primo ap della scansione
+
         // for each ap found (note that the apList is in aps[0])
         for (int i = 0; i < aps[0].size(); i++) {
             // insert in db as scan object only if there wasn't already a scan for that bssid at those lat/lon
             // look for a scanresult in scan table at a given lat lon
-            double lat = scanningLocation.getLatitude();
-            double lon = scanningLocation.getLongitude();
+            // first truncate double to second decimal cifra perché il db me le salva troncate!
+            // TODO: use 10000 instead of 1000 (and see if db saves 4 digits after float) if trilateration is not accurate
+            double lat = Math.floor(scanningLocation.getLatitude() * 10000) / 10000;
+            double lon = Math.floor(scanningLocation.getLongitude() * 10000) / 10000;
 
-            boolean scanFound = dbHelper.searchBssidGivenLatLon(
-                    aps[0].get(i).getBssid(), lat, lon);
+            boolean scanFound = dbHelper.searchBssidGivenLatLon(aps[0].get(i).getBssid(), lat, lon);
             // used to avoid doubles that mess with trilateration algorithm
             if (!scanFound) {
                 Log.d("DEBUG", "UpdateDbTask in scanFound");
@@ -118,15 +124,14 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
                         if (!Double.isNaN(res.latitude) && !Double.isNaN(res.longitude)) {
                             // update coverage
                             double coverageRadius = determineCoverage(currentBssid, res.latitude, res.longitude);
-                            if (coverageRadius > 400 ) { // PATCH TODO
-                                //HARDCODED
+                            if (coverageRadius > 400 ) // PATCH TODO
                                 coverageRadius = 50; // metto valore standard perché se lo lascio null mi ritrovo una nullpointerex
+
+                            //HARDCODED
                                 // quando vado a riempire mCircles nella mainactivity
                                 dbHelper.updateAp(currentBssid, null, null, res.latitude, res.longitude, coverageRadius);
                                 //IL PROBLEMA È CHE DOPO NON LA AGGIORNERÀ MAI PIÙ LA COVERAGE, QUINDI NON VA BENE!
                                 updatedApBssid.add(currentBssid); // add to list  of updated bssid
-
-                            }
 
                         }
                         // then go to next bssid
@@ -155,9 +160,10 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
             ApService.SCAN_COUNTER = 0;
             cursor.close();
         }
+        // è importante chiuderlo?
+        //dbHelper.close();
 
-        dbHelper.close();
-
+        Log.d("DEBUG", "UpdateDbTask: doInBackground() ended");
         return aps[0].size(); // con nessuna utilità apparente
 
     }
@@ -168,9 +174,28 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
 
     //TODO: e quelli che erano già sulla mappa? casino (può succedere se c'è un cambio di ssid ad es. o se si prevede
     // un miglioramento dell'approssimazione della posizione
-    protected void onPostExecute(Void... result) {
-        Log.d("DEBUG", "UpdateDbTask: onPostExecute");
+    protected void onPostExecute(Integer result) {
+        Log.d("DEBUG", "UpdateDbTask: onPostExecute()");
 
+
+        //PROVA TEMPORANEA
+        /*
+        double lat = Math.floor(scanningLocation.getLatitude() * 1000) / 1000;
+        double lon = Math.floor(scanningLocation.getLongitude() * 1000) / 1000;
+
+        boolean scanFound = dbHelper.searchBssidGivenLatLon(apProva.getBssid(), lat, lon);
+        // used to avoid doubles that mess with trilateration algorithm
+        if (!scanFound) {
+            Log.d("DEBUG", "UpdateDbTask in scanFound");
+
+            dbHelper.insertScanObject(apProva.getBssid(),
+                    apProva.getTimestamp(),
+                    lat,
+                    lon,
+                    apProva.getLevel());
+
+        }
+        */
         // update map on the ui thread involving only scanned aps
         // mContext refers to ApService that started the asynctask instance
         //Intent intent = new Intent(mContext, MainActivity.class);
