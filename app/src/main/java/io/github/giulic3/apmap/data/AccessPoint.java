@@ -1,5 +1,7 @@
 package io.github.giulic3.apmap.data;
 
+import android.os.Parcelable;
+
 // helper class type //CHANGE NAME IN SCANRESULT
 public class AccessPoint {
 

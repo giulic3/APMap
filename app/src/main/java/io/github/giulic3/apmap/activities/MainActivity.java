@@ -68,17 +68,16 @@ import static com.google.android.gms.common.ConnectionResult.SERVICE_MISSING;
 import static com.google.android.gms.common.ConnectionResult.NETWORK_ERROR;
 import static com.google.android.gms.common.ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED;
 
-// this activity has the following responsibilities used as a View/Controller: (oh my GodClass)
+// this activity has the following responsibilities
 // - inflates layout(s)
 // - starts and communicates with services
 // - handles events (scan)
-// - handle permissions (can do that only in activities or fragments)
+// - handles permissions
 // - setup (custom) map
 
-// TODO consider using recyclerview or listview for bottomsheet
 // TODO reorder or split methods
-// TODO add clear marker in onDestroy or onStop
-public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleMap.OnMarkerClickListener,
+GoogleMap.OnInfoWindowClickListener{
 
     private GoogleMap mMap;
     private Location mLastKnownLocation;
@@ -93,14 +92,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private List<AccessPointInfoEntry> apInfoList;
     private ArrayList<Marker> mMarkerArray; //used to save all the markers on map
     private ArrayList<Circle> mCircles; //used to save all circles associated to markers
-    // problem is, how to update when refreshing db? TODO
     private VisualizationHelper mVisualizationHelper;
-
-    // when to bind or unbind:
-    // If you need to interact with the service only while your activity is visible, you should bind
-    // during onStart() and unbind during onStop().
-    // If you want your activity to receive responses even while it is stopped in the background,
-    // then you can bind during onCreate() and unbind during onDestroy().
 
     private ServiceConnection mLocationConnection = new ServiceConnection() {
         @Override
@@ -291,18 +283,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mMarkerArray = new ArrayList<Marker>();
         mCircles = new ArrayList<Circle>();
 
-        /*
-        mDbHelper.deleteEntryBySsid("FASTWEB-1-5FF33F", Database.Table1.TABLE_NAME); // TO REMOVEE
-        mDbHelper.deleteEntry("c4:ea:1d:5f:f3:3f", Database.Table2.TABLE_NAME); // TODO:
-        mDbHelper.deleteEntry("a6:b1:e9:9d:8a:ed", Database.Table1.TABLE_NAME);
-        mDbHelper.deleteEntry("a6:b1:e9:9d:8a:ed", Database.Table2.TABLE_NAME);
-        mDbHelper.deleteEntry("c6:ea:1d:5f:f3:40", Database.Table1.TABLE_NAME);
-        mDbHelper.deleteEntry("c6:ea:1d:5f:f3:40", Database.Table2.TABLE_NAME);
-        mDbHelper.deleteEntry("c4:ea:1d:5f:f3:3f", Database.Table1.TABLE_NAME);
-        mDbHelper.deleteEntry("c4:ea:1d:5f:f3:3f", Database.Table2.TABLE_NAME);
-        */
         Cursor cursor = mDbHelper.getAll(Database.Table1.TABLE_NAME);
         mMap.setOnMarkerClickListener(this);
+        // Set a listener for info window events.
+        mMap.setOnInfoWindowClickListener(this);
 
         if (cursor.moveToFirst()) {
             do {
@@ -313,15 +297,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 if (latitude != null && longitude != null) {
 
-                    String capabilities = cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_CAPABILITIES));
-                    String securityType = getAccessPointSecurityType(capabilities);
 
-                    // setting marker color NOT IN FUNCTION
-                    /*
-                    float markerColor = 0.0f;
-                    if (securityType.equals("open")) markerColor = BitmapDescriptorFactory.HUE_GREEN;
-                        else markerColor = BitmapDescriptorFactory.HUE_RED;
-                    */
                     addMarker(cursor, Double.parseDouble(latitude), Double.parseDouble(longitude),
                             Double.parseDouble(coverageRadius));
                 }
@@ -332,13 +308,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void addMarker(Cursor cursor, Double latitude, Double longitude, Double coverageRadius){
+        // TODO: can use a method for marker color setting
+        // info needed to determine marker color
+        String capabilities = cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_CAPABILITIES));
+        String securityType = getAccessPointSecurityType(capabilities);
+
+        // setting marker color
+        float markerColor;
+        if (securityType.equals("open")) markerColor = BitmapDescriptorFactory.HUE_GREEN;
+        else markerColor = BitmapDescriptorFactory.HUE_RED;
 
         Marker marker = mMap.addMarker(new MarkerOptions()
+                .title(cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_SSID)))
                 .position(new LatLng(latitude, longitude))
-                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
+                .icon(BitmapDescriptorFactory.defaultMarker(markerColor)));
 
         // setting circle coverage and circle color
-        int circleColor = getColor(cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_CAPABILITIES)));
+        int circleColor = getCircleColor(cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_CAPABILITIES)));
         // adding circle
         Circle circle = mMap.addCircle(new CircleOptions()
                 .center(new LatLng(latitude, longitude))
@@ -366,7 +352,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     }
 // not working
-    private int getColor(String capabilities) {
+    private int getCircleColor(String capabilities) {
         // given capabilties of an ap, decide if the network is open or closed
         // return red if close, else green
         if (getAccessPointSecurityType(capabilities).equals("closed"))
@@ -384,6 +370,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         else
             return "open";
     }
+
+    /*
+    // formula inversa per risalire al livello
+    private double distanceToLevel(Location currentLocation, int frequency) { // be sure of minus sign
+        double distanceInMetres =
+        double distanceInMetres = Math.pow(10, ((27.55 - (20*Math.log10(frequency)) - level)/ 20));
+        double distanceInKilometres = distanceInMetres / 1000;
+        return distanceInKilometres;
+    }
+
+    private int convertLevelToHumanReadableValue() {}
+    */
+
     // on (generic) marker click callback MAYBE A RECYCLERVIEW OR A LISTVIEW?
     // questo modo di fare le cose fa schifo
     @Override
@@ -410,11 +409,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         estimatedLongitudeTv.setText("LONGITUDE: " + String.valueOf(apInfoEntry.getEstimatedLongitude()));
         coverageRadiusTv.setText("COVERAGE RADIUS: " + String.valueOf(apInfoEntry.getCoverageRadius()));
 
+        marker.showInfoWindow();
+
         if (mBottomSheetBehavior.getState() != BottomSheetBehavior.STATE_EXPANDED) {
             mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
         }
 
         return true;
+    }
+
+    @Override
+    public void onInfoWindowClick(Marker marker) {
+        marker.hideInfoWindow();
     }
 
     // callback interface for when the map is ready to be used
@@ -424,6 +430,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Log.d("DEBUG", "MainActivity: onMapReady()");
 
         mMap = googleMap;
+
+
         setUpMap();
     }
     // BROADCAST RECEIVERS
@@ -456,13 +464,24 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                     Cursor cursor = mDbHelper.getBssid(Database.Table1.TABLE_NAME, updatedApBssid.get(i));
                     //save lat, lon and everything else
-
-                    double lat = cursor.getDouble(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LATITUDE));
-                    double lon = cursor.getDouble(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LONGITUDE));
-                    double radius = cursor.getDouble(cursor.getColumnIndex((Database.Table1.COLUMN_NAME_COVERAGE_RADIUS)));
-                    addMarker(cursor, lat, lon, radius );
+                    if (cursor.moveToFirst()) {
+                        double lat = cursor.getDouble(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LATITUDE));
+                        double lon = cursor.getDouble(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LONGITUDE));
+                        double radius = cursor.getDouble(cursor.getColumnIndex((Database.Table1.COLUMN_NAME_COVERAGE_RADIUS)));
+                        addMarker(cursor, lat, lon, radius);
+                    }
                 }
             }
+
+            /*
+            TODO:
+            ArrayList<String> scanResultBssids = intent.getStringArrayListExtra("scanResultBssids");
+            ArrayList<String> scanResultLevels = intent.getStringArrayListExtra("scanResultLevels");
+            // update levels according to bssid
+            for (apInfoEntry : apInfoList) {
+                if
+            }
+            */
         }
     };
 

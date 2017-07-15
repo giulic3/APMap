@@ -348,8 +348,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         String stringLat = String.valueOf(latitude);
         String stringLon = String.valueOf(longitude);
-        Log.d("DEBUG", "searchBssidGivenLatLon lat :"+latitude+" lon: "+longitude);
-        Log.d("DEBUG", "searchBssidGivenLatLon Stringlat :"+stringLat+" Stringlon: "+stringLon );
+        //Log.d("DEBUG", "searchBssidGivenLatLon lat :"+latitude+" lon: "+longitude);
+        //Log.d("DEBUG", "searchBssidGivenLatLon Stringlat :"+stringLat+" Stringlon: "+stringLon );
 
         Cursor cursor = db.rawQuery("SELECT * FROM "+Database.Table2.TABLE_NAME+" WHERE "+
                 Database.Table2.COLUMN_NAME_BSSID +" = ?"+
@@ -358,7 +358,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 new String[] {bssid, stringLat, stringLon});
 
         int numberOfRows = cursor.getCount(); // conto le righe
-        Log.d("DEBUG", "searchBssidGivenLatLon(): count: "+numberOfRows);
+        //Log.d("DEBUG", "searchBssidGivenLatLon(): count: "+numberOfRows);
         // remember to close db AFTER closing cursor
         cursor.close();
         db.close();

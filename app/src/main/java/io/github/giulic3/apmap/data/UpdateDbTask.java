@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.location.Location;
 import android.os.AsyncTask;
+import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
@@ -15,15 +16,15 @@ import java.util.List;
 import io.github.giulic3.apmap.activities.MainActivity;
 import io.github.giulic3.apmap.services.ApService;
 
-
-public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
+// TODO: reorder or split methods
+public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Integer> {
 
     // device location when ap scanning started
     Location scanningLocation; // default modifier is 'package-private'
     DatabaseHelper dbHelper;
     Context mContext;
 
-    List<AccessPoint> apList;
+    ArrayList<AccessPoint> apList;
     AccessPoint apProva;
     private static final int SCAN_LIMIT = 50;
     private ArrayList<String> updatedApBssid; // contiene i bssid degli apinfoentry che ora hanno lat/lon/coverage
@@ -41,7 +42,7 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
     }
 
     // all the stuff to be done in background
-    protected Integer doInBackground(List<AccessPoint> ... aps) { //TODO refactor method
+    protected Integer doInBackground(ArrayList<AccessPoint> ... aps) { //TODO refactor method
 
         Log.d("DEBUG", "UpdateDbTask: doInBackground()");
         dbHelper.printAll(Database.Table2.TABLE_NAME);
@@ -97,71 +98,64 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
                   //get the first bssid
 
                 int j = 0;
+                boolean gettingTrilateration = true; // dev'essere true all'inizio
                 // assegno il bssid, prendo le prime 3 misure che trovo, costruisco latlng + distances
                 // dopo aver approssimato scalo al prossimo bssid
                 // e continuo
                 LatLng[] latLngs = new LatLng[3]; // works only with three points
                 double[] distances = new double[3];
                 do {
+                    // if it differs, it means i can start with trilateration for a new bssid, at the beginning is always true
+                    if (!cursor.getString(cursor.getColumnIndexOrThrow(Database.Table1.COLUMN_NAME_BSSID)).equals(currentBssid))
+                        gettingTrilateration = true;
 
-                    // retrieving information from db
-                    double lat = cursor.getDouble(cursor.getColumnIndexOrThrow(Database.Table2.COLUMN_NAME_SCAN_LATITUDE));
-                    double lon = cursor.getDouble(cursor.getColumnIndexOrThrow(Database.Table2.COLUMN_NAME_SCAN_LONGITUDE));
-                    int level = cursor.getInt(cursor.getColumnIndexOrThrow(Database.Table2.COLUMN_NAME_LEVEL));
-                    int frequency = cursor.getInt(cursor.getColumnIndexOrThrow(Database.Table1.COLUMN_NAME_FREQUENCY));
+                    // this variable is used to mean we are in the middle of taking 3 measures for a certain bssid
+                    if (gettingTrilateration) {
+                        // retrieving information from db
+                        double lat = cursor.getDouble(cursor.getColumnIndexOrThrow(Database.Table2.COLUMN_NAME_SCAN_LATITUDE));
+                        double lon = cursor.getDouble(cursor.getColumnIndexOrThrow(Database.Table2.COLUMN_NAME_SCAN_LONGITUDE));
+                        int level = cursor.getInt(cursor.getColumnIndexOrThrow(Database.Table2.COLUMN_NAME_LEVEL));
+                        int frequency = cursor.getInt(cursor.getColumnIndexOrThrow(Database.Table1.COLUMN_NAME_FREQUENCY));
 
-                    latLngs[j] = new LatLng(lat, lon);
-                    distances[j] = levelToDistance(level, frequency);
+                        latLngs[j] = new LatLng(lat, lon);
+                        distances[j] = levelToDistance(level, frequency);
 
-                    if (j == 2)  {
-                        LatLng res = getLocationByTrilateration(latLngs[0], distances[0], latLngs[1], distances[1], latLngs[2], distances[2]);
-                        Log.d("DEBUG", "UpdateDbTask: latitude "+res.latitude+"\n" +
-                                "longitude "+res.longitude);
-                        // then update position in db (only if trilateration went well)
-                        if (!Double.isNaN(res.latitude) && !Double.isNaN(res.longitude)) {
-                            // update coverage
-                            double coverageRadius = determineCoverage(currentBssid, res.latitude, res.longitude);
-                            if (coverageRadius > 400 ) // PATCH TODO
-                                coverageRadius = 50; // metto valore standard perché se lo lascio null mi ritrovo una nullpointerex
-
-                            //HARDCODED
+                        if (j == 2) {
+                            LatLng res = getLocationByTrilateration(latLngs[0], distances[0], latLngs[1], distances[1], latLngs[2], distances[2]);
+                            Log.d("DEBUG", "UpdateDbTask: latitude " + res.latitude + "\n" +
+                                    "longitude " + res.longitude);
+                            // then update position in db (only if trilateration went well)
+                            if (!Double.isNaN(res.latitude) && !Double.isNaN(res.longitude)) {
+                                // update coverage
+                                double coverageRadius = determineCoverage(currentBssid, res.latitude, res.longitude);
+                                // metto valore standard perché se lo lascio null mi ritrovo una nullpointerex
                                 // quando vado a riempire mCircles nella mainactivity
+                                if (coverageRadius > 400) // PATCH TODO
+                                    coverageRadius = 30;
+
                                 dbHelper.updateAp(currentBssid, null, null, res.latitude, res.longitude, coverageRadius);
-                                //IL PROBLEMA È CHE DOPO NON LA AGGIORNERÀ MAI PIÙ LA COVERAGE, QUINDI NON VA BENE!
                                 updatedApBssid.add(currentBssid); // add to list  of updated bssid
 
+                            }
+                            // then reset j and bool
+                            j = 0;
+                            gettingTrilateration = false;
+                        } else {
+                            j++;
                         }
-                        // then go to next bssid
-                        while (cursor.getString(cursor.getColumnIndexOrThrow(
-                                Database.Table1.COLUMN_NAME_BSSID)).equals(currentBssid)) {
-                            cursor.moveToNext();
-                        }
-
-                        currentBssid = cursor.getString(cursor.getColumnIndexOrThrow(
-                                Database.Table1.COLUMN_NAME_BSSID));
-
-                        // horrible patch but should work
-                        cursor.moveToPrevious();
-                        // then reset j
-                        j = 0;
-                    }
-                    else {
-                        j++;
-                    }
-
-                }
+                    } // end of if (gettingTrilateration)
+                } // end of do block
                 while (cursor.moveToNext());
             }
 
             // TODO bad habit to assign a public field like this
-            //ApService.SCAN_COUNTER = 0; TODO:ricordati di scommentare
+            //ApService.SCAN_COUNTER = 0; // TODO:
             cursor.close();
         }
-        // è importante chiuderlo?
         //dbHelper.close();
 
         Log.d("DEBUG", "UpdateDbTask: doInBackground() ended");
-        return aps[0].size(); // con nessuna utilità apparente
+        return aps[0].size();
 
     }
 
@@ -169,22 +163,31 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
 
     }
 
-    //TODO: e quelli che erano già sulla mappa? casino (può succedere se c'è un cambio di ssid ad es. o se si prevede
-    // un miglioramento dell'approssimazione della posizione
+    //TODO: e quelli che erano già sulla mappa? casino (può succedere se c'è un cambio di ssid ad es.)
     protected void onPostExecute(Integer result) {
 
         Log.d("DEBUG", "UpdateDbTask: onPostExecute()");
         // update map on the ui thread involving only scanned aps
         // mContext refers to ApService that started the asynctask instance
-        //Intent intent = new Intent(mContext, MainActivity.class);
+        ArrayList<String> scanResultBssids = new ArrayList<>();
+        ArrayList<Integer> scanResultLevels = new ArrayList<>();
+
+        for (int i = 0; i < apList.size(); i++) {
+            scanResultBssids.add(apList.get(i).getBssid());
+            scanResultLevels.add(apList.get(i).getLevel());
+        }
+        // send also the intent to update the level in the textviews (with the scan results apList)
         Intent intent = new Intent("DatabaseUpdates");
         intent.putStringArrayListExtra("updatedApBssid", updatedApBssid);
+        intent.putStringArrayListExtra("scanResultBssids", scanResultBssids);
+        intent.putIntegerArrayListExtra("scanResultLevels", scanResultLevels);
         LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
 
+        // TODO: this part must be tested (also on the mainactivity)
     }
 
-// EFFICIENTE MUOVENDOSI DI POCO, NON SO CON GROSSE VARIAZIONI DI LAT/LON, mettere scansione veloce
-// taken from stackoverflow, must give credit to author, distances in km?
+    // EFFICIENTE MUOVENDOSI DI POCO, (ok, l'estensione di un ap non è grande) NON SO CON GROSSE VARIAZIONI DI LAT/LON
+    // taken from stackoverflow, must give credit to author, distances in km?
     // works with only 3 points
     public LatLng getLocationByTrilateration(LatLng location1, double distance1,
                                                  LatLng location2, double distance2,

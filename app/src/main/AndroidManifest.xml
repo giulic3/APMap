@@ -45,7 +45,7 @@
         <!-- // This is required if you want your app to start in the emulator. I set it to false also if map is not an essential part of the application -->
 
 
-        <activity android:name=".activities.Splash">
+        <activity android:name=".activities.Splash" android:theme="@style/SplashTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>

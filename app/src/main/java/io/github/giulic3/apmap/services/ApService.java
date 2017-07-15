@@ -132,7 +132,7 @@ public class ApService extends Service {
         // executes when scan results are available
         @Override
         public void onReceive(Context arg0, Intent arg1) {
-            List<AccessPoint> apList = new ArrayList<AccessPoint>();
+            ArrayList<AccessPoint> apList = new ArrayList<AccessPoint>();
 
             Log.d("DEBUG", "ApService: onReceive()");
             wifiList = mWifiManager.getScanResults();
