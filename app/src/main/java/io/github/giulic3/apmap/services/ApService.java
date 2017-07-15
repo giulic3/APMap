@@ -35,7 +35,7 @@ import io.github.giulic3.apmap.data.UpdateDbTask;
 public class ApService extends Service {
 
     // used in conjunction with lastknownlocation to determine if can perform scansion
-    private static final long THREAD_SLEEP = 60000;
+    private static final long THREAD_SLEEP = 60000; // set 60000
     private static final long SCAN_DISTANCE_INTERVAL = 10; //in metres TODO: common sense
     private WifiManager mWifiManager;
     private WifiReceiver mWifiReceiver;
@@ -95,9 +95,10 @@ public class ApService extends Service {
                         // if they are null means it's the first scan, so we can proceed
                         //if ((previousLocation == null || mLastKnownLocation == null) ||
                         //        convertToDistance(previousLocation, mLastKnownLocation) >= SCAN_DISTANCE_INTERVAL) {
-                        Thread.sleep(THREAD_SLEEP);
                         mWifiManager.startScan();
                         SCAN_COUNTER++;
+                        Thread.sleep(THREAD_SLEEP);
+
                         //}
 
 

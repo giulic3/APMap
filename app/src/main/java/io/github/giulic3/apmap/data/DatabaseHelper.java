@@ -261,7 +261,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         Log.d("DEBUG", "DatabaseHelper: getInputSetForTrilateration()");
         SQLiteDatabase db = this.getReadableDatabase();
-        String query = "SELECT COUNT("+Database.Table1.TABLE_NAME+"."+Database.Table1.COLUMN_NAME_BSSID+"), "+"*"+
+        String query = "SELECT COUNT("+Database.Table1.TABLE_NAME+"."+Database.Table1.COLUMN_NAME_BSSID+"), "
+                + Database.Table1.TABLE_NAME+"."+Database.Table1.COLUMN_NAME_BSSID+
                 " FROM "+Database.Table1.TABLE_NAME+" INNER JOIN "+Database.Table2.TABLE_NAME+" ON"+
                 " "+Database.Table1.TABLE_NAME+"."+Database.Table1.COLUMN_NAME_BSSID+" = "
                 + Database.Table2.TABLE_NAME+"."+Database.Table1.COLUMN_NAME_BSSID
@@ -269,13 +270,50 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 Database.Table1.COLUMN_NAME_ESTIMATED_LONGITUDE+ " IS NULL "+
                 "GROUP BY "+Database.Table1.TABLE_NAME +"."+ Database.Table1.COLUMN_NAME_BSSID+
                 " HAVING COUNT("+Database.Table1.TABLE_NAME +"."+ Database.Table1.COLUMN_NAME_BSSID+") >= 3";
+        // this query gets all bssid that have at least three measures
+        Cursor cursor1 = db.rawQuery(query, null);
+        // setup array of bssids found in cursor1
+        if (cursor1.moveToFirst()) { // if cursor1 is not empty
 
-        Cursor cursor = db.rawQuery(query, null);
+            String[] bssids = new String[cursor1.getCount()];
+            int i = 0;
+            do {
+                // hope it works
+                bssids[i] = cursor1.getString(cursor1.getColumnIndexOrThrow(Database.Table1.COLUMN_NAME_BSSID));
+                i++;
+            } while (cursor1.moveToNext());
 
-        // TODO: pensare a quale sia il modo migliore per restituire il set
-        return cursor;
+            // take these bssid, and put in set for a new query
+            //cerca in scanresult questi bssid e restituisci in modo ordinato
+            String newQuery = "SELECT * FROM "+Database.Table1.TABLE_NAME+
+                    " INNER JOIN "+Database.Table2.TABLE_NAME+" ON"+
+                    " "+Database.Table1.TABLE_NAME+"."+Database.Table1.COLUMN_NAME_BSSID+" = "
+                    + Database.Table2.TABLE_NAME+"."+Database.Table1.COLUMN_NAME_BSSID+
+                    " WHERE "+Database.Table1.TABLE_NAME+"."+Database.Table1.COLUMN_NAME_BSSID+" IN ("
+                    +makePlaceholders(bssids.length) + ")"
+                    +" ORDER BY "+Database.Table1.TABLE_NAME+"."+Database.Table1.COLUMN_NAME_BSSID;
+            Cursor newCursor = db.rawQuery(newQuery, bssids);
+            // if a set is found returns new cursor
+            return newCursor;
+        }
+
+        else // returns an empty cursor, that will be checked in updatedbtask
+            return cursor1;
     }
-
+    // support function for getInputSetForTrilateration() which returns len question-marks separated with commas
+    private String makePlaceholders(int len) {
+        if (len < 1) {
+            // It will lead to an invalid query anyway ..
+            throw new RuntimeException("No placeholders");
+        } else {
+            StringBuilder sb = new StringBuilder(len * 2 - 1);
+            sb.append("?");
+            for (int i = 1; i < len; i++) {
+                sb.append(",?");
+            }
+            return sb.toString();
+        }
+    }
 
     // given a certain bssid, returns all scan entries for that bssid (similar to  previous, but previous
     // returns ALL ENTRIES FOR EVERY BSSID)

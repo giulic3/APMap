@@ -47,9 +47,6 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
         dbHelper.printAll(Database.Table2.TABLE_NAME);
         updatedApBssid = new ArrayList<String>();
 
-        //TEMPORANEO, TOGLIERE
-        apProva = aps[0].get(0); //il primo ap della scansione
-
         // for each ap found (note that the apList is in aps[0])
         for (int i = 0; i < aps[0].size(); i++) {
             // insert in db as scan object only if there wasn't already a scan for that bssid at those lat/lon
@@ -157,7 +154,7 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
             }
 
             // TODO bad habit to assign a public field like this
-            ApService.SCAN_COUNTER = 0;
+            //ApService.SCAN_COUNTER = 0; TODO:ricordati di scommentare
             cursor.close();
         }
         // è importante chiuderlo?
@@ -175,27 +172,8 @@ public class UpdateDbTask extends AsyncTask<List<AccessPoint>, Void, Integer> {
     //TODO: e quelli che erano già sulla mappa? casino (può succedere se c'è un cambio di ssid ad es. o se si prevede
     // un miglioramento dell'approssimazione della posizione
     protected void onPostExecute(Integer result) {
+
         Log.d("DEBUG", "UpdateDbTask: onPostExecute()");
-
-
-        //PROVA TEMPORANEA
-        /*
-        double lat = Math.floor(scanningLocation.getLatitude() * 1000) / 1000;
-        double lon = Math.floor(scanningLocation.getLongitude() * 1000) / 1000;
-
-        boolean scanFound = dbHelper.searchBssidGivenLatLon(apProva.getBssid(), lat, lon);
-        // used to avoid doubles that mess with trilateration algorithm
-        if (!scanFound) {
-            Log.d("DEBUG", "UpdateDbTask in scanFound");
-
-            dbHelper.insertScanObject(apProva.getBssid(),
-                    apProva.getTimestamp(),
-                    lat,
-                    lon,
-                    apProva.getLevel());
-
-        }
-        */
         // update map on the ui thread involving only scanned aps
         // mContext refers to ApService that started the asynctask instance
         //Intent intent = new Intent(mContext, MainActivity.class);

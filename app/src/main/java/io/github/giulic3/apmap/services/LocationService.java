@@ -60,7 +60,7 @@ public class LocationService extends Service implements LocationListener,
     }
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.i(LOGSERVICE, "onStartCommand");
+        Log.i(LOGSERVICE, "onStartCommand()");
 
         if (!mGoogleApiClient.isConnected())
             mGoogleApiClient.connect();
