@@ -42,7 +42,7 @@ public class ApService extends Service {
     //private Location previousLocation;
     private Location mLastKnownLocation;
     private DatabaseHelper mDbHelper;
-     // used to count number of scan performed, every 100 scans, will
+     // used to count number of scan_fab performed, every 100 scans, will
     // attempt to perform triangulation again TODO: set to 0 when done testing
      public static int SCAN_COUNTER = 100;
 
@@ -92,7 +92,7 @@ public class ApService extends Service {
                     try {
                         // increase thread_sleep because onreceive is much slower than thread
                         Log.d("DEBUG", "ApService: in thread startScan()");
-                        // if they are null means it's the first scan, so we can proceed
+                        // if they are null means it's the first scan_fab, so we can proceed
                         //if ((previousLocation == null || mLastKnownLocation == null) ||
                         //        convertToDistance(previousLocation, mLastKnownLocation) >= SCAN_DISTANCE_INTERVAL) {
                         mWifiManager.startScan();
@@ -129,7 +129,7 @@ public class ApService extends Service {
     class WifiReceiver extends BroadcastReceiver {
         private List<ScanResult> wifiList;
 
-        // executes when scan results are available
+        // executes when scan_fab results are available
         @Override
         public void onReceive(Context arg0, Intent arg1) {
             ArrayList<AccessPoint> apList = new ArrayList<AccessPoint>();
@@ -179,7 +179,7 @@ public class ApService extends Service {
     };
 
     // given two Location objects, this method returns the distance in metres.
-    // will be used to decide to perform or not the ap scan
+    // will be used to decide to perform or not the ap scan_fab
     // uses haversine formula
     // temporary public because used also by updatetaskdb
     private double convertToDistance(Location previousLocation, Location currentLocation) {

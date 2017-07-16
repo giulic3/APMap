@@ -315,7 +315,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
-    // given a certain bssid, returns all scan entries for that bssid (similar to  previous, but previous
+    // given a certain bssid, returns all scan_fab entries for that bssid (similar to  previous, but previous
     // returns ALL ENTRIES FOR EVERY BSSID)
     // also similar to searchBssid()
     public Cursor searchScanResultsForCoverage(String scanTableName, String bssid) {

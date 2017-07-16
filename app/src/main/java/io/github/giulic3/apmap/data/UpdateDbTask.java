@@ -50,34 +50,36 @@ public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Intege
 
         // for each ap found (note that the apList is in aps[0])
         for (int i = 0; i < aps[0].size(); i++) {
-            // insert in db as scan object only if there wasn't already a scan for that bssid at those lat/lon
-            // look for a scanresult in scan table at a given lat lon
+            // insert in db as scan_fab object only if there wasn't already a scan_fab for that bssid at those lat/lon
+            // look for a scanresult in scan_fab table at a given lat lon
             // first truncate double to second decimal cifra perché il db me le salva troncate!
             // TODO: use 10000 instead of 1000 (and see if db saves 4 digits after float) if trilateration is not accurate
-            double lat = Math.floor(scanningLocation.getLatitude() * 10000) / 10000;
-            double lon = Math.floor(scanningLocation.getLongitude() * 10000) / 10000;
+            if (scanningLocation != null) {
+                double lat = Math.floor(scanningLocation.getLatitude() * 10000) / 10000;
+                double lon = Math.floor(scanningLocation.getLongitude() * 10000) / 10000;
 
-            boolean scanFound = dbHelper.searchBssidGivenLatLon(aps[0].get(i).getBssid(), lat, lon);
-            // used to avoid doubles that mess with trilateration algorithm
-            if (!scanFound) {
-                Log.d("DEBUG", "UpdateDbTask in scanFound");
+                boolean scanFound = dbHelper.searchBssidGivenLatLon(aps[0].get(i).getBssid(), lat, lon);
+                // used to avoid doubles that mess with trilateration algorithm
+                if (!scanFound) {
+                    Log.d("DEBUG", "UpdateDbTask in scanFound");
 
-                dbHelper.insertScanObject(aps[0].get(i).getBssid(),
-                        aps[0].get(i).getTimestamp(),
-                        lat,
-                        lon,
-                        aps[0].get(i).getLevel());
+                    dbHelper.insertScanObject(aps[0].get(i).getBssid(),
+                            aps[0].get(i).getTimestamp(),
+                            lat,
+                            lon,
+                            aps[0].get(i).getLevel());
 
-            }
+                }
 
-            // insert in db as accesspointinfo (only if it's the first time)
-            boolean isFound = dbHelper.searchBssid(Database.Table1.TABLE_NAME, aps[0].get(i).getBssid());
-            if (!isFound) {
-                dbHelper.insertAp(aps[0].get(i).getBssid(),
-                        aps[0].get(i).getSsid(),
-                        aps[0].get(i).getCapabilities(),
-                        aps[0].get(i).getFrequency());
-            }
+                // insert in db as accesspointinfo (only if it's the first time)
+                boolean isFound = dbHelper.searchBssid(Database.Table1.TABLE_NAME, aps[0].get(i).getBssid());
+                if (!isFound) {
+                    dbHelper.insertAp(aps[0].get(i).getBssid(),
+                            aps[0].get(i).getSsid(),
+                            aps[0].get(i).getCapabilities(),
+                            aps[0].get(i).getFrequency());
+                }
+        }
         }
 
         // printing all scanobject entries
@@ -85,9 +87,8 @@ public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Intege
         // printing all accesspointinfo entries
         //dbHelper.printAll(Database.Table1.TABLE_NAME);
 
-        apList = aps[0];
 
-        // perform approximation every 100 scan, anche meno volendo
+        // perform approximation every 100 scan_fab, anche meno volendo
         if (ApService.SCAN_COUNTER >= SCAN_LIMIT) {
             // i could move everything inside databasehelper TODO
             Cursor cursor = dbHelper.getInputSetForTrilateration();
@@ -155,6 +156,7 @@ public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Intege
         //dbHelper.close();
 
         Log.d("DEBUG", "UpdateDbTask: doInBackground() ended");
+        apList = aps[0];
         return aps[0].size();
 
     }
@@ -170,16 +172,19 @@ public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Intege
         // update map on the ui thread involving only scanned aps
         // mContext refers to ApService that started the asynctask instance
         ArrayList<String> scanResultBssids = new ArrayList<>();
+        ArrayList<String> scanResultSsids = new ArrayList<>();
         ArrayList<Integer> scanResultLevels = new ArrayList<>();
 
         for (int i = 0; i < apList.size(); i++) {
             scanResultBssids.add(apList.get(i).getBssid());
+            scanResultSsids.add(apList.get(i).getSsid());
             scanResultLevels.add(apList.get(i).getLevel());
         }
-        // send also the intent to update the level in the textviews (with the scan results apList)
+        // send also the intent to update the level in the textviews (with the scan_fab results apList)
         Intent intent = new Intent("DatabaseUpdates");
         intent.putStringArrayListExtra("updatedApBssid", updatedApBssid);
-        intent.putStringArrayListExtra("scanResultBssids", scanResultBssids);
+        intent.putStringArrayListExtra("scanResultBssids", scanResultBssids); //not needed anymore
+        intent.putStringArrayListExtra("scanResultSsids", scanResultSsids);
         intent.putIntegerArrayListExtra("scanResultLevels", scanResultLevels);
         LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
 
@@ -326,7 +331,7 @@ public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Intege
         double distanceInMetres = earthRadius * c;
         return distanceInMetres;
     }
-    // given a set of scan results for a certain bssid, this method returns the average among
+    // given a set of scan_fab results for a certain bssid, this method returns the average among
     // all distances
     // then approximates coverage as a circle, returning its radius
     // now using patch per evitare di aggiornare con valori troppo sfasati, finché non si è capito il problema TODO

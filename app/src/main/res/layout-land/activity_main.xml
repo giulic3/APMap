@@ -12,16 +12,15 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical">
+        <RelativeLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
 
             <fragment
                 android:id="@+id/map"
                 class="com.google.android.gms.maps.MapFragment"
                 android:layout_width="match_parent"
-                android:layout_height="600dp">
+                android:layout_height="339dp">
 
                 <android.support.design.widget.FloatingActionButton
                     android:id="@+id/scan_fab_id"
@@ -34,25 +33,8 @@
                     android:src="@drawable/scan_fab" />
 
             </fragment>
-            <!--
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="horizontal">
-                <Button
-                    android:id="@+id/button"
-                    android:layout_height="wrap_content"
-                    android:layout_width="wrap_content"
-                    android:text="collapse/expand" />
-                <Button
-                    android:id="@+id/button_db"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="open db"/>
-            </LinearLayout>
-            -->
 
-        </LinearLayout>
+        </RelativeLayout>
 
     </ScrollView>
 
@@ -60,7 +42,7 @@
     <android.support.v4.widget.NestedScrollView
         android:id="@+id/ap_bottom_sheet"
         android:layout_width="match_parent"
-        android:layout_height="250dp"
+        android:layout_height="180dp"
         android:clipToPadding="false"
         android:background="@color/bottom_sheet_background"
         app:layout_behavior="android.support.design.widget.BottomSheetBehavior" >
@@ -111,7 +93,8 @@
                 android:text="LEVEL: -"
                 android:padding="16dp"
                 android:textSize="16sp"/>
-            -->
+              -->
+
             <TextView
                 android:id="@+id/estimated_latitude"
                 android:layout_width="wrap_content"

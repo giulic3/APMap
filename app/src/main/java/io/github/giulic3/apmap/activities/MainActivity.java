@@ -2,6 +2,7 @@ package io.github.giulic3.apmap.activities;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.FragmentTransaction;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -16,7 +17,10 @@ import android.location.Location;
 
 import android.os.IBinder;
 import android.support.design.widget.BottomSheetBehavior;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
@@ -58,8 +62,12 @@ import java.util.List;
 
 import io.github.giulic3.apmap.R;
 import io.github.giulic3.apmap.data.AccessPointInfoEntry;
+import io.github.giulic3.apmap.data.CustomMap;
 import io.github.giulic3.apmap.data.Database;
 import io.github.giulic3.apmap.data.DatabaseHelper;
+import io.github.giulic3.apmap.fragments.ScanResultFragment;
+import io.github.giulic3.apmap.helpers.CustomAdapter;
+import io.github.giulic3.apmap.helpers.DisplayValueHelper;
 import io.github.giulic3.apmap.helpers.VisualizationHelper;
 import io.github.giulic3.apmap.services.ApService;
 import io.github.giulic3.apmap.services.LocationService;
@@ -71,7 +79,7 @@ import static com.google.android.gms.common.ConnectionResult.SERVICE_VERSION_UPD
 // this activity has the following responsibilities
 // - inflates layout(s)
 // - starts and communicates with services
-// - handles events (scan)
+// - handles events (scan_fab)
 // - handles permissions
 // - setup (custom) map
 
@@ -88,11 +96,14 @@ GoogleMap.OnInfoWindowClickListener{
     boolean isBound = false;
     boolean isFirstUpdate = true; // true if locationChanged for the first time (patch)
     private DatabaseHelper mDbHelper;
-    private Button mButton;
+    private FloatingActionButton mButton;
     private List<AccessPointInfoEntry> apInfoList;
     private ArrayList<Marker> mMarkerArray; //used to save all the markers on map
     private ArrayList<Circle> mCircles; //used to save all circles associated to markers
     private VisualizationHelper mVisualizationHelper;
+    private ArrayList<String> scanResultSsids;
+    private ArrayList<Integer> scanResultLevels;
+    private DisplayValueHelper mDisplayValueHelper;
 
     private ServiceConnection mLocationConnection = new ServiceConnection() {
         @Override
@@ -149,22 +160,20 @@ GoogleMap.OnInfoWindowClickListener{
         mBottomSheetBehavior.setPeekHeight(0); // key line
 
         //temporary: must disappear
-        mButton = (Button) findViewById(R.id.button);
+        mButton = (FloatingActionButton) findViewById(R.id.scan_fab_id);
         mButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Log.d("DEBUG", "bottom sheet state: "+mBottomSheetBehavior.getState());
-                if(mBottomSheetBehavior.getState() != BottomSheetBehavior.STATE_EXPANDED) {
-                    mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
-                    Log.d("DEBUG", "onClick if");
-                }
-                else {
-                    mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
-                    Log.d("DEBUG", "onClick else");
-                }
+                // TODO: pass through the intent the scanresults obtained here from mDatabaseReceiver
+                // the intent extra is always the same! the first one passed BUG
+                Intent intent = new Intent(MainActivity.this, ScanResultsActivity.class);
+                intent.putStringArrayListExtra("scanResultSsids", scanResultSsids);
+                intent.putIntegerArrayListExtra("scanResultLevels", scanResultLevels);
+                startActivity(intent);
             }
         });
         // temporary: setting db button
+        /*
         Button button = (Button) findViewById(R.id.button_db);
 
         button.setOnClickListener(new View.OnClickListener() {
@@ -174,8 +183,12 @@ GoogleMap.OnInfoWindowClickListener{
                 startActivity(dbmanager);
             }
         });
+        */
         // instantiates object that handles marker visualization methods on map
         mVisualizationHelper = new VisualizationHelper();
+        mDisplayValueHelper = new DisplayValueHelper();
+
+
     }
 
     @Override
@@ -394,7 +407,7 @@ GoogleMap.OnInfoWindowClickListener{
         TextView ssidTv = (TextView) findViewById(R.id.ssid);
         TextView capabilitiesTv = (TextView) findViewById(R.id.capabilities);
         TextView frequencyTv = (TextView) findViewById(R.id.frequency);
-        TextView levelTv = (TextView) findViewById(R.id.level);
+        //TextView levelTv = (TextView) findViewById(R.id.level);
         TextView estimatedLatitudeTv = (TextView) findViewById(R.id.estimated_latitude);
         TextView estimatedLongitudeTv = (TextView) findViewById(R.id.estimated_longitude);
         TextView coverageRadiusTv = (TextView) findViewById(R.id.coverage_radius);
@@ -402,12 +415,13 @@ GoogleMap.OnInfoWindowClickListener{
         AccessPointInfoEntry apInfoEntry = (AccessPointInfoEntry) marker.getTag();
         bssidTv.setText("BSSID: " + apInfoEntry.getBssid());
         ssidTv.setText("SSID: " + apInfoEntry.getSsid());
-        capabilitiesTv.setText("CAPABILITIES: " + apInfoEntry.getCapabilities());
+        capabilitiesTv.setText("CAPABILITIES: " + mDisplayValueHelper.getReadableSecurityType(
+                apInfoEntry.getCapabilities()));
         frequencyTv.setText("FREQUENCY: " + String.valueOf(apInfoEntry.getFrequency()));
         // levelTv.setText(); level must be set in other ways //TODO
-        estimatedLatitudeTv.setText("LATITUDE: " + String.valueOf(apInfoEntry.getEstimatedLatitude()));
-        estimatedLongitudeTv.setText("LONGITUDE: " + String.valueOf(apInfoEntry.getEstimatedLongitude()));
-        coverageRadiusTv.setText("COVERAGE RADIUS: " + String.valueOf(apInfoEntry.getCoverageRadius()));
+        estimatedLatitudeTv.setText("LATITUDE: " + mDisplayValueHelper.formatCoordinate(apInfoEntry.getEstimatedLatitude()));
+        estimatedLongitudeTv.setText("LONGITUDE: " + mDisplayValueHelper.formatCoordinate(apInfoEntry.getEstimatedLongitude()));
+        coverageRadiusTv.setText("COVERAGE RADIUS: " + mDisplayValueHelper.formatCoordinate(apInfoEntry.getCoverageRadius()));
 
         marker.showInfoWindow();
 
@@ -457,7 +471,7 @@ GoogleMap.OnInfoWindowClickListener{
         @Override
         public void onReceive(Context context, Intent intent) {
             ArrayList<String> updatedApBssid = intent.getStringArrayListExtra("updatedApBssid");
-
+            // maybe it doesn't do anything because the array is always empty
             for (int i = 0; i < updatedApBssid.size(); i++) {
 
                 if ((apInfoList != null) && (mMarkerArray != null) && (mCircles != null)) {
@@ -473,17 +487,19 @@ GoogleMap.OnInfoWindowClickListener{
                 }
             }
 
+            //temporary
             /*
-            TODO:
-            ArrayList<String> scanResultBssids = intent.getStringArrayListExtra("scanResultBssids");
-            ArrayList<String> scanResultLevels = intent.getStringArrayListExtra("scanResultLevels");
-            // update levels according to bssid
-            for (apInfoEntry : apInfoList) {
-                if
-            }
+            mMap.clear();
+            populateMap();
             */
+            // TODO:
+            scanResultSsids = intent.getStringArrayListExtra("scanResultSsids");
+            scanResultLevels = intent.getIntegerArrayListExtra("scanResultLevels");
+
         }
     };
+
+
 
     protected static final int REQUEST_CHECK_SETTINGS = 0x1;
 

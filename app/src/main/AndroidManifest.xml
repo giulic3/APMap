@@ -44,34 +44,36 @@
             android:required="false"/>
         <!-- // This is required if you want your app to start in the emulator. I set it to false also if map is not an essential part of the application -->
 
-
-        <activity android:name=".activities.Splash" android:theme="@style/SplashTheme">
+        <activity
+            android:name=".activities.Splash"
+            android:theme="@style/SplashTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
+
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-
         <activity android:name=".activities.MainActivity">
-
         </activity>
 
         <!-- REMOVE LATER -->
-        <activity android:name="io.github.giulic3.apmap.activities.AndroidDatabaseManager"
-                  android:theme="@style/Theme.AppCompat.Light"/>
+        <activity
+            android:name=".activities.AndroidDatabaseManager"
+            android:theme="@style/Theme.AppCompat.Light"/>
+
         <service
             android:name=".services.ApService"
             android:enabled="true"
             android:exported="false">
         </service>
-
         <service
             android:name=".services.LocationService"
             android:enabled="true"
             android:exported="true">
         </service>
 
-
+        <activity android:name=".activities.ScanResultsActivity">
+        </activity>
     </application>
 
 </manifest>

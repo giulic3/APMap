@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:tools="http://schemas.android.com/tools"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="5dip" >
+
+
+        <TextView
+            android:id="@+id/list_ssid"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#040404"
+            android:textSize="18sp"
+            android:typeface="sans" />
+
+        <TextView
+            android:id="@+id/list_level"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/list_ssid"
+            android:layout_marginTop="1dip"
+            android:textColor="#d50000"
+            android:textSize="15sp"
+            tools:ignore="SmallSp"/>
+
+</RelativeLayout>
