@@ -7,20 +7,22 @@
     android:layout_height="match_parent"
     tools:context="io.github.giulic3.apmap.activities.MainActivity">
 
-
+<!--
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent">
-
-        <RelativeLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content">
+-->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
 
             <fragment
                 android:id="@+id/map"
                 class="com.google.android.gms.maps.MapFragment"
                 android:layout_width="match_parent"
-                android:layout_height="339dp">
+                android:layout_height="0dp"
+                android:layout_weight="1"> <!-- 339dp -->
 
                 <android.support.design.widget.FloatingActionButton
                     android:id="@+id/scan_fab_id"
@@ -29,15 +31,15 @@
                     android:layout_gravity="bottom|right"
                     android:layout_margin="16dp"
                     android:clickable="true"
-                    android:backgroundTint="@color/colorPrimary"
+                    app:backgroundTint="@color/colorPrimary"
                     android:src="@drawable/scan_fab" />
 
             </fragment>
 
-        </RelativeLayout>
-
+        </LinearLayout>
+<!--
     </ScrollView>
-
+-->
 
     <android.support.v4.widget.NestedScrollView
         android:id="@+id/ap_bottom_sheet"

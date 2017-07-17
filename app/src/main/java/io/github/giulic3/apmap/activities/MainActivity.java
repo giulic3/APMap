@@ -32,6 +32,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.common.api.PendingResult;
 import com.google.android.gms.common.api.ResultCallback;
@@ -104,6 +105,7 @@ GoogleMap.OnInfoWindowClickListener{
     private ArrayList<String> scanResultSsids;
     private ArrayList<Integer> scanResultLevels;
     private DisplayValueHelper mDisplayValueHelper;
+    private FloatingActionButton button; //temporary
 
     private ServiceConnection mLocationConnection = new ServiceConnection() {
         @Override
@@ -159,31 +161,8 @@ GoogleMap.OnInfoWindowClickListener{
         mBottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
         mBottomSheetBehavior.setPeekHeight(0); // key line
 
-        //temporary: must disappear
-        mButton = (FloatingActionButton) findViewById(R.id.scan_fab_id);
-        mButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                // TODO: pass through the intent the scanresults obtained here from mDatabaseReceiver
-                // the intent extra is always the same! the first one passed BUG
-                Intent intent = new Intent(MainActivity.this, ScanResultsActivity.class);
-                intent.putStringArrayListExtra("scanResultSsids", scanResultSsids);
-                intent.putIntegerArrayListExtra("scanResultLevels", scanResultLevels);
-                startActivity(intent);
-            }
-        });
-        // temporary: setting db button
-        /*
-        Button button = (Button) findViewById(R.id.button_db);
 
-        button.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
 
-                Intent dbmanager = new Intent(MainActivity.this, AndroidDatabaseManager.class);
-                startActivity(dbmanager);
-            }
-        });
-        */
         // instantiates object that handles marker visualization methods on map
         mVisualizationHelper = new VisualizationHelper();
         mDisplayValueHelper = new DisplayValueHelper();
@@ -211,9 +190,6 @@ GoogleMap.OnInfoWindowClickListener{
             isBound = false;
         }
 
-        LocalBroadcastManager.getInstance(MainActivity.this).unregisterReceiver(mLocationReceiver);
-        LocalBroadcastManager.getInstance(MainActivity.this).unregisterReceiver(mDatabaseUpdatesReceiver);
-
     }
 
 
@@ -230,12 +206,43 @@ GoogleMap.OnInfoWindowClickListener{
                 mMap.setMyLocationEnabled(true);
             }
         }
+        mButton = (FloatingActionButton) findViewById(R.id.scan_fab_id);
+        if (mButton != null) {
+            mButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    // TODO: pass through the intent the scanresults obtained here from mDatabaseReceiver
+                    // the intent extra is always the same! the first one passed BUG
+                    Intent intent = new Intent(MainActivity.this, ScanResultsActivity.class);
+                    intent.putStringArrayListExtra("scanResultSsids", scanResultSsids);
+                    intent.putIntegerArrayListExtra("scanResultLevels", scanResultLevels);
+                    startActivity(intent);
+                }
+            });
+        }
+
+        // temporary: setting db button
+
+        FloatingActionButton button = (FloatingActionButton) findViewById(R.id.button_db);
+        if (button != null) {
+            button.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) {
+
+                    Intent dbmanager = new Intent(MainActivity.this, AndroidDatabaseManager.class);
+                    startActivity(dbmanager);
+                }
+            });
+        }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         mMap.clear();
+
+        LocalBroadcastManager.getInstance(MainActivity.this).unregisterReceiver(mLocationReceiver);
+        LocalBroadcastManager.getInstance(MainActivity.this).unregisterReceiver(mDatabaseUpdatesReceiver);
+
     }
 
     @Override
@@ -321,6 +328,8 @@ GoogleMap.OnInfoWindowClickListener{
     }
 
     private void addMarker(Cursor cursor, Double latitude, Double longitude, Double coverageRadius){
+
+        Log.d("DEBUG", "MainActivity: addMarker()");
         // TODO: can use a method for marker color setting
         // info needed to determine marker color
         String capabilities = cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_CAPABILITIES));
@@ -470,7 +479,14 @@ GoogleMap.OnInfoWindowClickListener{
     private BroadcastReceiver mDatabaseUpdatesReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+
+            Log.d("DEBUG", "MainActivity: mDatabaseUpdatesReceiver onReceive()");
             ArrayList<String> updatedApBssid = intent.getStringArrayListExtra("updatedApBssid");
+            Log.d("DEBUG", "MainActivity: updatedApBssid size: "+updatedApBssid.size());
+
+            Toast toast = Toast.makeText(getApplicationContext(),
+                    "updatedApBssid size: "+updatedApBssid.size(), Toast.LENGTH_SHORT);
+            toast.show();
             // maybe it doesn't do anything because the array is always empty
             for (int i = 0; i < updatedApBssid.size(); i++) {
 
@@ -483,6 +499,9 @@ GoogleMap.OnInfoWindowClickListener{
                         double lon = cursor.getDouble(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LONGITUDE));
                         double radius = cursor.getDouble(cursor.getColumnIndex((Database.Table1.COLUMN_NAME_COVERAGE_RADIUS)));
                         addMarker(cursor, lat, lon, radius);
+                        Toast toast2 = Toast.makeText(getApplicationContext(),
+                                "new marker added", Toast.LENGTH_SHORT);
+                        toast2.show();
                     }
                 }
             }
@@ -606,6 +625,7 @@ GoogleMap.OnInfoWindowClickListener{
     public void onRequestPermissionsResult(int requestCode,
                                            String permissions[], int[] grantResults) {
 
+        Log.d("DEBUG", "MainActivity: onRequestPermissionsResul()");
         switch (requestCode) {
             case MY_PERMISSIONS_REQUEST_LOCATION: {
                 // if request is cancelled, the result arrays are empty

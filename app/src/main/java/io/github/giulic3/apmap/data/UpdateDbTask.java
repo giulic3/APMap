@@ -36,8 +36,9 @@ public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Intege
         this.dbHelper = dbHelper;
         this.scanningLocation = scanningLocation;
     }
-    // executed before starting the new thread
+    // executed before starting the new thread, used for variable initialization
     protected void onPreExecute(){
+        updatedApBssid = new ArrayList<String>();
 
     }
 
@@ -46,7 +47,7 @@ public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Intege
 
         Log.d("DEBUG", "UpdateDbTask: doInBackground()");
         dbHelper.printAll(Database.Table2.TABLE_NAME);
-        updatedApBssid = new ArrayList<String>();
+        //updatedApBssid = new ArrayList<String>();
 
         // for each ap found (note that the apList is in aps[0])
         for (int i = 0; i < aps[0].size(); i++) {
@@ -107,8 +108,11 @@ public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Intege
                 double[] distances = new double[3];
                 do {
                     // if it differs, it means i can start with trilateration for a new bssid, at the beginning is always true
-                    if (!cursor.getString(cursor.getColumnIndexOrThrow(Database.Table1.COLUMN_NAME_BSSID)).equals(currentBssid))
+                    if (!cursor.getString(cursor.getColumnIndexOrThrow(Database.Table1.COLUMN_NAME_BSSID)).equals(currentBssid)) {
                         gettingTrilateration = true;
+                        currentBssid = cursor.getString(
+                                cursor.getColumnIndexOrThrow(Database.Table1.COLUMN_NAME_BSSID));
+                    }
 
                     // this variable is used to mean we are in the middle of taking 3 measures for a certain bssid
                     if (gettingTrilateration) {
@@ -127,14 +131,20 @@ public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Intege
                                     "longitude " + res.longitude);
                             // then update position in db (only if trilateration went well)
                             if (!Double.isNaN(res.latitude) && !Double.isNaN(res.longitude)) {
+                                // testing when it is better to approximate? also before coverage?
+                                double newLat = Math.floor(res.latitude * 10000) / 10000;
+                                double newLon = Math.floor(res.longitude * 10000) / 10000;
                                 // update coverage
-                                double coverageRadius = determineCoverage(currentBssid, res.latitude, res.longitude);
+                                double coverageRadius = determineCoverage(currentBssid, newLat, newLon);
                                 // metto valore standard perché se lo lascio null mi ritrovo una nullpointerex
                                 // quando vado a riempire mCircles nella mainactivity
-                                if (coverageRadius > 400) // PATCH TODO
+                                if (coverageRadius > 100) // PATCH TODO
                                     coverageRadius = 30;
-
-                                dbHelper.updateAp(currentBssid, null, null, res.latitude, res.longitude, coverageRadius);
+                                // approximate again before saving (see if it works) // TODO test
+                                //double newLat = Math.floor(res.latitude * 100000) / 100000;
+                                //double newLon = Math.floor(res.longitude * 100000) / 100000;
+                                Log.d("DEBUG", "UpdateDbTask: newLat and newLon: "+String.valueOf(newLat)+" "+String.valueOf(newLon));
+                                dbHelper.updateAp(currentBssid, null, null, newLat, newLon, coverageRadius);
                                 updatedApBssid.add(currentBssid); // add to list  of updated bssid
 
                             }
