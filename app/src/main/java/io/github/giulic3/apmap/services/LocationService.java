@@ -45,8 +45,9 @@ public class LocationService extends Service implements LocationListener,
 
     private GoogleApiClient mGoogleApiClient;
     private static final String LOGSERVICE = "LocationService";
+    private static final int LOCATION_REQUEST_INTERVAL = 30000;
 
-    // binder given to clients (=mainActivity)
+    // binder given to clients (= mainActivity)
     private final IBinder mBinder = new LocalBinder();
 
     @Override
@@ -87,11 +88,6 @@ public class LocationService extends Service implements LocationListener,
         public GoogleApiClient getGoogleApiClient() { return mGoogleApiClient; }
     }
 
-    private void destroyConnection() {
-        if (mGoogleApiClient != null)
-            mGoogleApiClient.disconnect();
-    }
-
     // starts as callback when the phone connects to a GoogleApiClient
     @Override
     public void onConnected(Bundle connectionHint) {
@@ -117,7 +113,7 @@ public class LocationService extends Service implements LocationListener,
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
         // TODO: ADD CASES (see ConnectionResult reference) and resolve activityParameter problem
-        // il problema sarà testarlo su un real device adesso
+        // can't test this
         Log.d("DEBUG", "LocationService: onConnectionFailed()");
 
         int errorCode = connectionResult.getErrorCode();
@@ -125,7 +121,6 @@ public class LocationService extends Service implements LocationListener,
             case SERVICE_MISSING: {
                 GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
                 googleApiAvailability.getErrorDialog(activityParameter, SERVICE_MISSING, 2401).show();
-                // come usare da qua startActiviyForResult per risolvere il problema?
             }
             case NETWORK_ERROR: {
                 // to be implemented
@@ -150,7 +145,7 @@ public class LocationService extends Service implements LocationListener,
         mLastLocation = location;
         // notify activity with changed location
         String message = "location just changed";
-        sendMessageToActivity(mLastLocation, message);
+        sendMessage(mLastLocation, message);
     }
 
 
@@ -158,8 +153,6 @@ public class LocationService extends Service implements LocationListener,
         return mLastLocation;
     }
 
-
-    // TODO define parameters
     private void initializeLocationRequest(){
         Log.d("DEBUG", "LocationService: initializeLocationRequest()");
 
@@ -167,15 +160,10 @@ public class LocationService extends Service implements LocationListener,
         mLocationRequest = LocationRequest.create();
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         // these determines how often onLocationChanged() will be called,
-        // time is in ms, aka 30 seconds */ //TODO: set time according to common sense and remove hardcoded numbers
-        mLocationRequest.setInterval(30000);
+        //TODO: set time according to common sense and remove hardcoded numbers
+        mLocationRequest.setInterval(LOCATION_REQUEST_INTERVAL);
         // 30 seconds
-        mLocationRequest.setFastestInterval(30000);
-
-    }
-
-    private void stopLocationUpdate() {
-        LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
+        mLocationRequest.setFastestInterval(LOCATION_REQUEST_INTERVAL);
 
     }
 
@@ -189,10 +177,9 @@ public class LocationService extends Service implements LocationListener,
                 .build();
     }
 
-    // actually also to apservice...
-    private void sendMessageToActivity(Location l, String msg) {
+    private void sendMessage(Location l, String msg) {
+
         Intent intent = new Intent("GPSLocationUpdates");
-        // You can also include some extra data.
         intent.putExtra("Status", msg);
         Bundle b = new Bundle();
         b.putParcelable("Location", l);

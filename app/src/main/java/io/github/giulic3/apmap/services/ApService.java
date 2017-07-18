@@ -5,30 +5,19 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.location.Location;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.IBinder;
-import android.os.Looper;
-import android.os.Message;
-import android.os.Process;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.google.android.gms.maps.CameraUpdateFactory;
-import com.google.android.gms.maps.model.LatLng;
-
 import java.util.ArrayList;
 import java.util.List;
 
-import io.github.giulic3.apmap.data.AccessPoint;
-import io.github.giulic3.apmap.data.Database;
+import io.github.giulic3.apmap.models.AccessPoint;
 import io.github.giulic3.apmap.data.DatabaseHelper;
 import io.github.giulic3.apmap.data.UpdateDbTask;
 
@@ -36,17 +25,16 @@ public class ApService extends Service {
 
     // used in conjunction with lastknownlocation to determine if can perform scansion
     private static final long THREAD_SLEEP = 60000; // set 60000
-    private static final long SCAN_DISTANCE_INTERVAL = 10; //in metres TODO: common sense
     private WifiManager mWifiManager;
     private WifiReceiver mWifiReceiver;
     //private Location previousLocation;
     private Location mLastKnownLocation;
     private DatabaseHelper mDbHelper;
-     // used to count number of scan_fab performed, every 100 scans, will
+     // used to count number of scan performed, every 100 scans, will
     // attempt to perform triangulation again TODO: set to 0 when done testing
      public static int SCAN_COUNTER = 100;
 
-    // called by the system when this service is first created
+    /** Called by the system when this service is first created */
     @Override
     public void onCreate(){
 
@@ -86,25 +74,18 @@ public class ApService extends Service {
 
         new Thread(new Runnable(){
             public void run() {
-                // TODO Auto-generated method stub
+
                 while(true)
                 {
                     try {
-                        // increase thread_sleep because onreceive is much slower than thread
                         Log.d("DEBUG", "ApService: in thread startScan()");
-                        // if they are null means it's the first scan_fab, so we can proceed
-                        //if ((previousLocation == null || mLastKnownLocation == null) ||
-                        //        convertToDistance(previousLocation, mLastKnownLocation) >= SCAN_DISTANCE_INTERVAL) {
+
                         mWifiManager.startScan();
                         SCAN_COUNTER++;
                         Thread.sleep(THREAD_SLEEP);
 
-                        //}
-
-
 
                     } catch (InterruptedException e) {
-                        // TODO Auto-generated catch block
                         e.printStackTrace();
                     }
 
@@ -124,8 +105,6 @@ public class ApService extends Service {
         throw new UnsupportedOperationException("Not yet implemented");
     }
 
-    // con un broadcast receiver l'app viene notificata dal sistema ogni qualvolta si verifica
-    // un determinato evento (per il quale il receiver si è registrato)
     class WifiReceiver extends BroadcastReceiver {
         private List<ScanResult> wifiList;
 
@@ -164,44 +143,16 @@ public class ApService extends Service {
         }
     }
 
+    // broadcast receiver to get location
     private BroadcastReceiver mLocationReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            // Get extra data included in the Intent
+
             String message = intent.getStringExtra("Status");
             Bundle b = intent.getBundleExtra("Location");
-
-            //previousLocation = mLastKnownLocation;
             mLastKnownLocation = (Location) b.getParcelable("Location");
-
-
         }
     };
-
-    // given two Location objects, this method returns the distance in metres.
-    // will be used to decide to perform or not the ap scan_fab
-    // uses haversine formula
-    // temporary public because used also by updatetaskdb
-    private double convertToDistance(Location previousLocation, Location currentLocation) {
-
-        double previousLatitude = previousLocation.getLatitude();
-        double previousLongitude = previousLocation.getLongitude();
-        double currentLatitude = currentLocation.getLatitude();
-        double currentLongitude = currentLocation.getLongitude();
-        double earthRadius = 6371000; // metres
-        double φ1 = Math.toRadians(previousLatitude);
-        double φ2 = Math.toRadians(currentLatitude);
-        double Δφ = Math.toRadians(currentLatitude - previousLatitude);
-        double Δλ = Math.toRadians(currentLongitude - previousLongitude);
-
-        double a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-                Math.cos(φ1) * Math.cos(φ2) *
-                        Math.sin(Δλ/2) * Math.sin(Δλ/2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
-        double distanceInMetres = earthRadius * c;
-        return distanceInMetres;
-    }
 
 }
 

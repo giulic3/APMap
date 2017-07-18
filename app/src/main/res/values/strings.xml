@@ -2,11 +2,21 @@
     <string name="app_name">APMap</string>
 
     <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
-    <string name="title_activity_maps">Map</string>
+    <string name="hello_blank_fragment">Ciao blank fragment</string>
+    <string name="title_activity_maps">Mappa</string>
 
-    <string name="title_location_permission">Request location permission</string>
-    <string name="text_location_permission">Permission is needed to display your position</string>
+    <string name="title_location_permission">Richiesta dei permessi di geolocalizzazione</string>
+    <string name="text_location_permission">I permessi servono per mostrare la posizione del dispositivo</string>
     <string name="ok">Accept</string>
+
+    <!-- bottomsheet textviews -->
+    <string name="bssid_tag">bssid: %1$s</string>
+    <string name="ssid_tag">ssid: %1$s</string>
+    <string name="capabilities_tag">tipo di sicurezza: %1$s</string>
+    <string name="frequency_tag">frequenza: %1$s</string>
+    <string name="latitude_tag">latitudine: %1$s</string>
+    <string name="longitude_tag">longitudine: %1$s</string>
+    <string name="coverage_radius_tag">raggio di copertura: %1$s</string>
+
 
 </resources>

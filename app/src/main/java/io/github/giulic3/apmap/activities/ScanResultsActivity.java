@@ -5,27 +5,22 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.database.Cursor;
 import android.provider.Settings;
 import android.support.v4.content.LocalBroadcastManager;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
-import android.widget.Toast;
 
 import java.util.ArrayList;
 
 import io.github.giulic3.apmap.R;
-import io.github.giulic3.apmap.data.CustomMap;
-import io.github.giulic3.apmap.data.Database;
-import io.github.giulic3.apmap.helpers.CustomAdapter;
+import io.github.giulic3.apmap.models.CustomMap;
+import io.github.giulic3.apmap.adapters.CustomAdapter;
 
 public class ScanResultsActivity extends ListActivity {
 
-    private ListView listView;
     private ArrayList<CustomMap> scanResults;
     private CustomAdapter listAdapter;
     ArrayList<String> scanResultSsids;
@@ -39,8 +34,7 @@ public class ScanResultsActivity extends ListActivity {
         setContentView(R.layout.activity_scan_results);
         ListView listView = (ListView) findViewById(android.R.id.list);
         scanResults = new ArrayList<>();
-        //mixing two approaches: intent + broadcast receiver
-        // retrieve data from intent that started this activity
+        // retrieve data from intent that started this activity (then wait for onReceive())
         Intent intent = getIntent();
         scanResultSsids = intent.getStringArrayListExtra("scanResultSsids");
         scanResultLevels = intent.getIntegerArrayListExtra("scanResultLevels");
@@ -67,19 +61,6 @@ public class ScanResultsActivity extends ListActivity {
                 startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
             }
         });
-        /*
-        // setup scanresults arraylist
-        if (scanResultSsids != null) {
-            for (int i = 0; i < scanResultSsids.size(); i++){
-                scanResults.add( new CustomMap(scanResultSsids.get(i), scanResultLevels.get(i)));
-            }
-
-
-            // TODO: ci starebbe bene un blocco try/catch
-
-
-        }
-        */
     }
 
     @Override
@@ -95,16 +76,16 @@ public class ScanResultsActivity extends ListActivity {
             scanResultSsids = intent.getStringArrayListExtra("scanResultSsids");
             scanResultLevels = intent.getIntegerArrayListExtra("scanResultLevels");
 
-            listAdapter.clear(); // i clear all data
 
             if (scanResultSsids != null) {
+                listAdapter.clear();
+
                 for (int i = 0; i < scanResultSsids.size(); i++) {
                     scanResults.add(new CustomMap(scanResultSsids.get(i), scanResultLevels.get(i)));
                 }
 
-                listAdapter.notifyDataSetChanged(); // first change
-                //listAdapter.notifyDataSetChanged();  // second change
-                // TODO: così funziona ma sta troppo tempo ad aspettare la lista...
+                listAdapter.notifyDataSetChanged();
+
             }
         }
     };

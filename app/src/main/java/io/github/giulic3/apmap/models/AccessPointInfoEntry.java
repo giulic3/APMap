@@ -1,5 +1,4 @@
-package io.github.giulic3.apmap.data;
-
+package io.github.giulic3.apmap.models;
 
 public class AccessPointInfoEntry {
 
@@ -12,7 +11,7 @@ public class AccessPointInfoEntry {
     private double coverageRadius;
 
     public AccessPointInfoEntry(String bssid, String ssid, String capabilities, int frequency,
-                         double estimatedLatitude, double estimatedLongitude, double coverageRadius) {
+                                double estimatedLatitude, double estimatedLongitude, double coverageRadius) {
         this.bssid = bssid;
         this.ssid = ssid;
         this.capabilities = capabilities;

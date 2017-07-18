@@ -14,10 +14,10 @@ import android.view.ViewGroup;
 import android.widget.ListView;
 
 import io.github.giulic3.apmap.R;
-import io.github.giulic3.apmap.data.AccessPoint;
-import io.github.giulic3.apmap.data.CustomMap;
+import io.github.giulic3.apmap.models.AccessPoint;
+import io.github.giulic3.apmap.models.CustomMap;
 
-import io.github.giulic3.apmap.helpers.CustomAdapter;
+import io.github.giulic3.apmap.adapters.CustomAdapter;
 
 import java.util.ArrayList;
 

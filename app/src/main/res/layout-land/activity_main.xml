@@ -28,7 +28,7 @@
                     android:id="@+id/scan_fab_id"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="bottom|right"
+                    android:layout_gravity="bottom|end"
                     android:layout_margin="16dp"
                     android:clickable="true"
                     app:backgroundTint="@color/colorPrimary"
@@ -59,16 +59,15 @@
                 android:id="@+id/bssid"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:text="BSSID: -"
+                android:text="@string/bssid_tag"
                 android:textSize="16sp"
-                android:textAllCaps="true"
                 android:padding="16dp"/>
 
             <TextView
                 android:id="@+id/ssid"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="SSID: -"
+                android:text="@string/ssid_tag"
                 android:padding="16dp"
                 android:textSize="16sp"/>
 
@@ -76,7 +75,7 @@
                 android:id="@+id/capabilities"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="CAPABILITIES: -"
+                android:text="@string/capabilities_tag"
                 android:padding="16dp"
                 android:textSize="16sp"/>
 
@@ -84,7 +83,7 @@
                 android:id="@+id/frequency"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="FREQUENCY: -"
+                android:text="@string/frequency_tag"
                 android:padding="16dp"
                 android:textSize="16sp"/>
             <!--
@@ -101,7 +100,7 @@
                 android:id="@+id/estimated_latitude"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="LATITUDE: -"
+                android:text="@string/latitude_tag"
                 android:padding="16dp"
                 android:textSize="16sp"/>
 
@@ -109,7 +108,7 @@
                 android:id="@+id/estimated_longitude"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="LONGITUDE: -"
+                android:text="@string/longitude_tag"
                 android:padding="16dp"
                 android:textSize="16sp"/>
 
@@ -117,7 +116,7 @@
                 android:id="@+id/coverage_radius"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="COVERAGE RADIUS: -"
+                android:text="@string/coverage_radius_tag"
                 android:padding="16dp"
                 android:textSize="16sp"/>
 

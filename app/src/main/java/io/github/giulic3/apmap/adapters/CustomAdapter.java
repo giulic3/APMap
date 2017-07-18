@@ -1,4 +1,4 @@
-package io.github.giulic3.apmap.helpers;
+package io.github.giulic3.apmap.adapters;
 
 import android.content.Context;
 import android.view.LayoutInflater;
@@ -10,7 +10,8 @@ import android.widget.TextView;
 import java.util.List;
 
 import io.github.giulic3.apmap.R;
-import io.github.giulic3.apmap.data.CustomMap;
+import io.github.giulic3.apmap.models.CustomMap;
+import io.github.giulic3.apmap.helpers.DisplayValueHelper;
 
 
 public class CustomAdapter extends ArrayAdapter<CustomMap> {

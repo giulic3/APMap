@@ -2,7 +2,6 @@ package io.github.giulic3.apmap.activities;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.FragmentTransaction;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -19,8 +18,6 @@ import android.os.IBinder;
 import android.support.design.widget.BottomSheetBehavior;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
@@ -30,7 +27,6 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -56,56 +52,54 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
-import org.w3c.dom.Text;
-
 import java.util.ArrayList;
 import java.util.List;
 
 import io.github.giulic3.apmap.R;
-import io.github.giulic3.apmap.data.AccessPointInfoEntry;
-import io.github.giulic3.apmap.data.CustomMap;
 import io.github.giulic3.apmap.data.Database;
 import io.github.giulic3.apmap.data.DatabaseHelper;
-import io.github.giulic3.apmap.fragments.ScanResultFragment;
-import io.github.giulic3.apmap.helpers.CustomAdapter;
 import io.github.giulic3.apmap.helpers.DisplayValueHelper;
 import io.github.giulic3.apmap.helpers.VisualizationHelper;
+import io.github.giulic3.apmap.models.AccessPoint;
+import io.github.giulic3.apmap.models.AccessPointInfoEntry;
 import io.github.giulic3.apmap.services.ApService;
 import io.github.giulic3.apmap.services.LocationService;
-
-import static com.google.android.gms.common.ConnectionResult.SERVICE_MISSING;
-import static com.google.android.gms.common.ConnectionResult.NETWORK_ERROR;
-import static com.google.android.gms.common.ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED;
 
 // this activity has the following responsibilities
 // - inflates layout(s)
 // - starts and communicates with services
 // - handles events (scan_fab)
 // - handles permissions
-// - setup (custom) map
+// - setup map
 
 // TODO reorder or split methods
-public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleMap.OnMarkerClickListener,
-GoogleMap.OnInfoWindowClickListener{
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,
+        GoogleMap.OnMarkerClickListener, GoogleMap.OnInfoWindowClickListener{
 
+    // map and location related
     private GoogleMap mMap;
     private Location mLastKnownLocation;
-    private BottomSheetBehavior mBottomSheetBehavior;
     private LocationService mLocationService;
     private LocationRequest mLocationRequest;
     private GoogleApiClient mGoogleApiClient;
+    // bool
     boolean isBound = false;
-    boolean isFirstUpdate = true; // true if locationChanged for the first time (patch)
+    boolean isFirstUpdate = true; // true if location changed for the first time (patch)
+    // helpers
     private DatabaseHelper mDbHelper;
-    private FloatingActionButton mButton;
+    private VisualizationHelper mVisualizationHelper;
+    private DisplayValueHelper mDisplayValueHelper;
+    // support variables
     private List<AccessPointInfoEntry> apInfoList;
     private ArrayList<Marker> mMarkerArray; //used to save all the markers on map
-    private ArrayList<Circle> mCircles; //used to save all circles associated to markers
-    private VisualizationHelper mVisualizationHelper;
+    private ArrayList<Circle> mCircles; //used to save all the circles associated to markers
     private ArrayList<String> scanResultSsids;
     private ArrayList<Integer> scanResultLevels;
-    private DisplayValueHelper mDisplayValueHelper;
+    // views
     private FloatingActionButton button; //temporary
+    private BottomSheetBehavior mBottomSheetBehavior;
+    private FloatingActionButton mButton;
+
 
     private ServiceConnection mLocationConnection = new ServiceConnection() {
         @Override
@@ -123,7 +117,7 @@ GoogleMap.OnInfoWindowClickListener{
             isBound = false;
         }
     };
-
+    /** Called when the activity is first created. */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
@@ -143,41 +137,34 @@ GoogleMap.OnInfoWindowClickListener{
             bindService(new Intent(this, LocationService.class), mLocationConnection, Context.BIND_AUTO_CREATE);
             startService(new Intent(this, LocationService.class));
         }
-        // starts apservice
+        // starts ApService
         startService(new Intent(this, ApService.class));
 
-        // register for broadcasts
+        // register broadcast receivers
         LocalBroadcastManager.getInstance(MainActivity.this).registerReceiver(
                 mLocationReceiver, new IntentFilter("GPSLocationUpdates"));
-       // LocalBroadcastManager.getInstance(MainActivity.this).registerReceiver(
-          //      mApReceiver, new IntentFilter("AccessPointsUpdates"));
         LocalBroadcastManager.getInstance(MainActivity.this).registerReceiver(mDatabaseUpdatesReceiver,
                 new IntentFilter("DatabaseUpdates"));
 
-        // get reference to dbhelper object
+        // get references to helpers
         mDbHelper = new DatabaseHelper(MainActivity.this);
-
-        View bottomSheet = findViewById(R.id.ap_bottom_sheet);
-        mBottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
-        mBottomSheetBehavior.setPeekHeight(0); // key line
-
-
-
-        // instantiates object that handles marker visualization methods on map
         mVisualizationHelper = new VisualizationHelper();
         mDisplayValueHelper = new DisplayValueHelper();
-
+        // set bottom sheet behaviour
+        View bottomSheet = findViewById(R.id.ap_bottom_sheet);
+        mBottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
+        mBottomSheetBehavior.setPeekHeight(0);
 
     }
-
-    @Override
+    /** Called when the activity is about to become visible. */
+    @Override //TODO: posso evitare di fare overriding visto che non sto facendo niente...
     protected void onStart() {
 
         Log.d("DEBUG", "MainActivity: onStart()");
 
         super.onStart();
     }
-
+    /** Called when the activity is no longer visible. */
     @Override
     protected void onStop() {
 
@@ -192,7 +179,7 @@ GoogleMap.OnInfoWindowClickListener{
 
     }
 
-
+    /** Called when the activity has become visible. */
     @Override
     protected void onResume() {
 
@@ -211,8 +198,7 @@ GoogleMap.OnInfoWindowClickListener{
             mButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    // TODO: pass through the intent the scanresults obtained here from mDatabaseReceiver
-                    // the intent extra is always the same! the first one passed BUG
+                    // pass through the intent the scan results obtained from mDatabaseReceiver
                     Intent intent = new Intent(MainActivity.this, ScanResultsActivity.class);
                     intent.putStringArrayListExtra("scanResultSsids", scanResultSsids);
                     intent.putIntegerArrayListExtra("scanResultLevels", scanResultLevels);
@@ -221,7 +207,7 @@ GoogleMap.OnInfoWindowClickListener{
             });
         }
 
-        // temporary: setting db button
+        // TODO: temporary: setting db button
 
         FloatingActionButton button = (FloatingActionButton) findViewById(R.id.button_db);
         if (button != null) {
@@ -234,7 +220,7 @@ GoogleMap.OnInfoWindowClickListener{
             });
         }
     }
-
+    /** Called just before the activity is destroyed. */
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -244,15 +230,15 @@ GoogleMap.OnInfoWindowClickListener{
         LocalBroadcastManager.getInstance(MainActivity.this).unregisterReceiver(mDatabaseUpdatesReceiver);
 
     }
-
+    /** Called (only) the first time the options menu is displayed.*/
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.visualization_options_menu, menu);
         return true;
     }
-
-    @Override
+    /**  Called whenever an item in the options menu is selected. */
+     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // handle item selection
         switch (item.getItemId()) {
@@ -280,23 +266,17 @@ GoogleMap.OnInfoWindowClickListener{
         }
     }
 
-    // TODO: vuoto così è inutile, si può spostare il contenuto altrove
+    // aggiungere: possibilità di customizzare la mappa tramite le preferenze? TODO
+
     // this method contains all the commands to customize the map
     private void setUpMap() {
 
-        Log.d("DEBUG", "MainActivity: setUpMap()");
-        if ((ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED) && (mMap != null)) {
-            mMap.setMyLocationEnabled(true);
-        }
-
-        populateMap();
 
     }
 
-    // this method extracts data from db and fill the map with aps markers, associating each marker
-    // to an accesspointinfo object
-    private void populateMap() { //TODO: refactor method, too long
+    /** This method extracts data from db and fill the map with aps markers, associating each marker
+    with an AccessPointInfoEntry object **/
+    private void populateMap() {
 
         Log.d("DEBUG", "MainActivity: populateMap()");
         apInfoList = new ArrayList<AccessPointInfoEntry>();
@@ -310,13 +290,11 @@ GoogleMap.OnInfoWindowClickListener{
 
         if (cursor.moveToFirst()) {
             do {
-                // type string: can be null
                 String latitude = cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LATITUDE));
                 String longitude = cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LONGITUDE));
                 String coverageRadius = cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_COVERAGE_RADIUS));
 
                 if (latitude != null && longitude != null) {
-
 
                     addMarker(cursor, Double.parseDouble(latitude), Double.parseDouble(longitude),
                             Double.parseDouble(coverageRadius));
@@ -335,7 +313,7 @@ GoogleMap.OnInfoWindowClickListener{
         String capabilities = cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_CAPABILITIES));
         String securityType = getAccessPointSecurityType(capabilities);
 
-        // setting marker color
+        // setting marker color according to capabilities
         float markerColor;
         if (securityType.equals("open")) markerColor = BitmapDescriptorFactory.HUE_GREEN;
         else markerColor = BitmapDescriptorFactory.HUE_RED;
@@ -353,10 +331,9 @@ GoogleMap.OnInfoWindowClickListener{
                 .radius(coverageRadius)
                 .strokeColor(Color.TRANSPARENT)
                 .fillColor(circleColor)
-                .zIndex(1.0f)); // color depends on capabilities
-        // green ones have higher z-index(?)
-        // prepare object to associate to map marker
-        // no lat/lon, no need to associate object, will be done when refreshing map
+                .zIndex(1.0f));
+
+        // prepare object to associate with map marker
         apInfoList.add(new AccessPointInfoEntry(
                 cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_BSSID)),
                 cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_SSID)),
@@ -367,18 +344,17 @@ GoogleMap.OnInfoWindowClickListener{
                 cursor.getDouble(cursor.getColumnIndex((Database.Table1.COLUMN_NAME_COVERAGE_RADIUS)))));
 
         marker.setTag(apInfoList.get(apInfoList.size() - 1));
-        // adding marker to array: also for circles?
+
         mMarkerArray.add(marker);
         mCircles.add(circle);
 
 
     }
-// not working
+
+    // return circle color according to network security, red if closed, else green
     private int getCircleColor(String capabilities) {
-        // given capabilties of an ap, decide if the network is open or closed
-        // return red if close, else green
         if (getAccessPointSecurityType(capabilities).equals("closed"))
-            return Color.parseColor("#66FF0000"); // USE CONSTANTS TODO
+            return Color.parseColor("#66FF0000");
 
         else { //it's open
             return Color.parseColor("#6614EE91");
@@ -393,25 +369,12 @@ GoogleMap.OnInfoWindowClickListener{
             return "open";
     }
 
-    /*
-    // formula inversa per risalire al livello
-    private double distanceToLevel(Location currentLocation, int frequency) { // be sure of minus sign
-        double distanceInMetres =
-        double distanceInMetres = Math.pow(10, ((27.55 - (20*Math.log10(frequency)) - level)/ 20));
-        double distanceInKilometres = distanceInMetres / 1000;
-        return distanceInKilometres;
-    }
-
-    private int convertLevelToHumanReadableValue() {}
-    */
-
-    // on (generic) marker click callback MAYBE A RECYCLERVIEW OR A LISTVIEW?
-    // questo modo di fare le cose fa schifo
+    /** Called whenever a marker is clicked*/
     @Override
     public boolean onMarkerClick(Marker marker){
+
         Log.d("DEBUG", "MainActivity: onMarkerClick()");
 
-        // where to put all these variables?
         TextView bssidTv = (TextView) findViewById(R.id.bssid);
         TextView ssidTv = (TextView) findViewById(R.id.ssid);
         TextView capabilitiesTv = (TextView) findViewById(R.id.capabilities);
@@ -422,25 +385,28 @@ GoogleMap.OnInfoWindowClickListener{
         TextView coverageRadiusTv = (TextView) findViewById(R.id.coverage_radius);
 
         AccessPointInfoEntry apInfoEntry = (AccessPointInfoEntry) marker.getTag();
-        bssidTv.setText("BSSID: " + apInfoEntry.getBssid());
-        ssidTv.setText("SSID: " + apInfoEntry.getSsid());
-        capabilitiesTv.setText("CAPABILITIES: " + mDisplayValueHelper.getReadableSecurityType(
-                apInfoEntry.getCapabilities()));
-        frequencyTv.setText("FREQUENCY: " + String.valueOf(apInfoEntry.getFrequency()));
-        // levelTv.setText(); level must be set in other ways //TODO
-        estimatedLatitudeTv.setText("LATITUDE: " + mDisplayValueHelper.formatCoordinate(apInfoEntry.getEstimatedLatitude()));
-        estimatedLongitudeTv.setText("LONGITUDE: " + mDisplayValueHelper.formatCoordinate(apInfoEntry.getEstimatedLongitude()));
-        coverageRadiusTv.setText("COVERAGE RADIUS: " + mDisplayValueHelper.formatCoordinate(apInfoEntry.getCoverageRadius()));
+        bssidTv.setText(getString(R.string.bssid_tag, apInfoEntry.getBssid()));
+        ssidTv.setText(getString(R.string.ssid_tag, apInfoEntry.getSsid()));
+        capabilitiesTv.setText(getString(R.string.capabilities_tag, mDisplayValueHelper.getReadableSecurityType(
+                apInfoEntry.getCapabilities())));
+        frequencyTv.setText(getString(R.string.frequency_tag, String.valueOf(apInfoEntry.getFrequency())));
+        estimatedLatitudeTv.setText(getString(R.string.latitude_tag,
+                mDisplayValueHelper.formatCoordinate(apInfoEntry.getEstimatedLatitude())));
+        estimatedLongitudeTv.setText(getString(R.string.longitude_tag,
+                mDisplayValueHelper.formatCoordinate(apInfoEntry.getEstimatedLongitude())));
+        coverageRadiusTv.setText(getString(R.string.coverage_radius_tag,
+                mDisplayValueHelper.formatCoordinate(apInfoEntry.getCoverageRadius())));
 
         marker.showInfoWindow();
 
+        // slide bottom sheet up
         if (mBottomSheetBehavior.getState() != BottomSheetBehavior.STATE_EXPANDED) {
             mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
         }
 
         return true;
     }
-
+    /** Called whenever a marker info window is clicked */
     @Override
     public void onInfoWindowClick(Marker marker) {
         marker.hideInfoWindow();
@@ -454,10 +420,18 @@ GoogleMap.OnInfoWindowClickListener{
 
         mMap = googleMap;
 
+        // setUpMap();
 
-        setUpMap();
+        if ((ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) && (mMap != null)) {
+            mMap.setMyLocationEnabled(true);
+        }
+
+        populateMap();
     }
-    // BROADCAST RECEIVERS
+
+    // broadcast receivers
+
     private BroadcastReceiver mLocationReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -487,7 +461,7 @@ GoogleMap.OnInfoWindowClickListener{
             Toast toast = Toast.makeText(getApplicationContext(),
                     "updatedApBssid size: "+updatedApBssid.size(), Toast.LENGTH_SHORT);
             toast.show();
-            // maybe it doesn't do anything because the array is always empty
+
             for (int i = 0; i < updatedApBssid.size(); i++) {
 
                 if ((apInfoList != null) && (mMarkerArray != null) && (mCircles != null)) {
@@ -506,11 +480,6 @@ GoogleMap.OnInfoWindowClickListener{
                 }
             }
 
-            //temporary
-            /*
-            mMap.clear();
-            populateMap();
-            */
             // TODO:
             scanResultSsids = intent.getStringArrayListExtra("scanResultSsids");
             scanResultLevels = intent.getIntegerArrayListExtra("scanResultLevels");
@@ -518,18 +487,17 @@ GoogleMap.OnInfoWindowClickListener{
         }
     };
 
-
+    // mechanism to request location settings
 
     protected static final int REQUEST_CHECK_SETTINGS = 0x1;
 
     // this method creates a Location Settings Request specifying all kinds of requests that will be asked
-    //TODO: boilerplate
      public void requestLocationSettings(){
 
          Log.d("DEBUG", "MainActivity: requestLocationSettings()");
 
         LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
-                .addLocationRequest(mLocationRequest); //currently only high priority, give chance to choose
+                .addLocationRequest(mLocationRequest); //currently only high priority
 
         PendingResult<LocationSettingsResult> result =
                 LocationServices.SettingsApi.checkLocationSettings(mGoogleApiClient, builder.build());
@@ -577,7 +545,6 @@ GoogleMap.OnInfoWindowClickListener{
                 switch (resultCode) {
                     case Activity.RESULT_OK:
                         // All required changes were successfully made
-                        // aggiorno l'oggetto locationRequest e lo rimando al service?
                         break;
                     case Activity.RESULT_CANCELED:
                         // The user was asked to change settings, but chose not to
@@ -614,7 +581,6 @@ GoogleMap.OnInfoWindowClickListener{
         }
             // means permission was granted during installation
         else {
-                Log.d("DEBUG", "MainActivity: api<23 in checkPermission()");
                 return true;
         }
 
@@ -625,7 +591,7 @@ GoogleMap.OnInfoWindowClickListener{
     public void onRequestPermissionsResult(int requestCode,
                                            String permissions[], int[] grantResults) {
 
-        Log.d("DEBUG", "MainActivity: onRequestPermissionsResul()");
+        Log.d("DEBUG", "MainActivity: onRequestPermissionsResult()");
         switch (requestCode) {
             case MY_PERMISSIONS_REQUEST_LOCATION: {
                 // if request is cancelled, the result arrays are empty
@@ -638,7 +604,7 @@ GoogleMap.OnInfoWindowClickListener{
 
                         mMap.setMyLocationEnabled(true);
 
-                        // start service when permission is granted
+                        // bind and start service when permission is granted
                         bindService(new Intent(this, LocationService.class), mLocationConnection, Context.BIND_AUTO_CREATE);
                         startService(new Intent(this, LocationService.class));
                     }
@@ -646,9 +612,9 @@ GoogleMap.OnInfoWindowClickListener{
                 } else {
 
                     // permission denied, disabling the functionality that depends on this permission.
-                    // TODO: l'app non visualizzerà più la propria posizione ma continuerà a funzionare
+                    // l'app non visualizzerà più la propria posizione ma continuerà a funzionare
                     // avendo un database di ap e usando degli indirizzi per navigare la mappa
-
+                    // TODO: search interface
                 }
                 return;
             }
