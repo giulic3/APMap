@@ -74,7 +74,6 @@ public class LocationService extends Service implements LocationListener,
     // this returns IBinder object to Activity
     @Override
     public IBinder onBind(Intent intent) {
-        // TODO: Return the communication channel to the service.
         return mBinder;
     }
 
@@ -112,7 +111,6 @@ public class LocationService extends Service implements LocationListener,
     // starts as callback when phone can't connect to GoogleApiServices, e.g. no GoogleServices are available
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
-        // TODO: ADD CASES (see ConnectionResult reference) and resolve activityParameter problem
         // can't test this
         Log.d("DEBUG", "LocationService: onConnectionFailed()");
 
@@ -160,9 +158,7 @@ public class LocationService extends Service implements LocationListener,
         mLocationRequest = LocationRequest.create();
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         // these determines how often onLocationChanged() will be called,
-        //TODO: set time according to common sense and remove hardcoded numbers
         mLocationRequest.setInterval(LOCATION_REQUEST_INTERVAL);
-        // 30 seconds
         mLocationRequest.setFastestInterval(LOCATION_REQUEST_INTERVAL);
 
     }

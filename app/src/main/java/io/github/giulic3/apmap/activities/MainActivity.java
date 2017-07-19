@@ -64,7 +64,6 @@ import io.github.giulic3.apmap.models.AccessPointInfoEntry;
 import io.github.giulic3.apmap.services.ApService;
 import io.github.giulic3.apmap.services.LocationService;
 
-// TODO reorder or split methods
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,
         GoogleMap.OnMarkerClickListener, GoogleMap.OnInfoWindowClickListener{
 
@@ -150,7 +149,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     }
     /** Called when the activity is about to become visible. */
-    @Override //TODO: posso evitare di fare overriding visto che non sto facendo niente...
     protected void onStart() {
 
         Log.d("DEBUG", "MainActivity: onStart()");
@@ -261,14 +259,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    // aggiungere: possibilità di customizzare la mappa tramite le preferenze? TODO
-
-    // this method contains all the commands to customize the map
-    private void setUpMap() {
-
-
-    }
-
     /** This method extracts data from db and fill the map with aps markers, associating each marker
     with an AccessPointInfoEntry object **/
     private void populateMap() {
@@ -303,7 +293,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private void addMarker(Cursor cursor, Double latitude, Double longitude, Double coverageRadius){
 
         Log.d("DEBUG", "MainActivity: addMarker()");
-        // TODO: can use a method for marker color setting
         // info needed to determine marker color
         String capabilities = cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_CAPABILITIES));
         String securityType = getAccessPointSecurityType(capabilities);
@@ -600,9 +589,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 } else {
 
                     // permission denied, disabling the functionality that depends on this permission.
-                    // l'app non visualizzerà più la propria posizione ma continuerà a funzionare
-                    // avendo un database di ap e usando degli indirizzi per navigare la mappa
-                    // TODO: search interface
+
                 }
                 return;
             }

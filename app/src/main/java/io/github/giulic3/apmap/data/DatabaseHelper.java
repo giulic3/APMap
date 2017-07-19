@@ -382,5 +382,4 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             return alc;
         }
     }
-// TODO: fare screenshots per report
 }

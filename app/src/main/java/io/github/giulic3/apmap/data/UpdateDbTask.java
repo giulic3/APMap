@@ -39,7 +39,7 @@ public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Intege
     }
 
 
-    protected Integer doInBackground(ArrayList<AccessPoint> ... aps) { //TODO refactor method
+    protected Integer doInBackground(ArrayList<AccessPoint> ... aps) {
 
         Log.d("DEBUG", "UpdateDbTask: doInBackground()");
 
@@ -129,8 +129,7 @@ public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Intege
         for (int i = 0; i < aps.size(); i++) {
             // insert in db as scan object only if there wasn't already a scan for that bssid at those lat/lon
             if (scanningLocation != null) {
-                //double lat = Math.floor(scanningLocation.getLatitude() * 10000) / 10000; TODO
-                //double lon = Math.floor(scanningLocation.getLongitude() * 10000) / 10000;
+
                 double lat = MathHelper.truncateDouble(scanningLocation.getLatitude());
                 double lon = MathHelper.truncateDouble(scanningLocation.getLongitude());
                 boolean scanFound = dbHelper.searchBssidGivenLatLon(aps.get(i).getBssid(), lat, lon);
@@ -159,7 +158,6 @@ public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Intege
     }
     protected void onProgressUpdate(Void... progress) { }
 
-    //TODO: e quelli che erano già sulla mappa? casino (può succedere se c'è un cambio di ssid ad es.)
     protected void onPostExecute(Integer result) {
 
         Log.d("DEBUG", "UpdateDbTask: onPostExecute()");

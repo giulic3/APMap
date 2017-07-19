@@ -63,7 +63,6 @@ public class VisualizationHelper {
         }
     }
 
-    // TODO: modo per combinare due cose? es. togliere i cerchi solo dei marker non visibili?
     public void hideCoverage(ArrayList<Circle> circles) {
 
         for (int i = 0; i < circles.size(); i++) {
