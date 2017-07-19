@@ -10,8 +10,14 @@ import io.github.giulic3.apmap.data.Database;
 public class MathHelper {
 
 
-    // taken from stackoverflow, must give credit to author, distances in km
-    // works with only 3 points TODO: provare cambiando conversione
+    // taken from https://stackoverflow.com/questions/30336278/multi-point-trilateration-algorithm-in-java
+    // credits to the author
+    // see the Wikipedia page for "Trilateration" for reference
+    // not very accurate when points are almost aligned
+    /** This method takes three LatLng objects and three distances from each point to the point
+     * we're trying to determine. Distances in km */
+    //TODO: provare cambiando conversione
+
     public static LatLng getLocationByTrilateration(LatLng location1, double distance1,
                                              LatLng location2, double distance2,
                                              LatLng location3, double distance3){
@@ -120,19 +126,19 @@ public class MathHelper {
         return new LatLng(triptx,tripty);
 
     }
-    // takes level in dbm, frequency in mhZ and returns distance in km using an approximation of
-    // free-space path loss formula
-    public static double levelToDistance(int level, int frequency) { // be sure of minus sign
+    /**  Takes level in dBm, frequency in mhZ and returns distance in km using an approximation of
+     free-space path loss formula */
+    public static double levelToDistance(int level, int frequency) {
 
         double distanceInMetres = Math.pow(10, ((27.55 - (20*Math.log10(frequency)) - level)/ 20));
         double distanceInKilometres = distanceInMetres / 1000;
         return distanceInKilometres;
     }
-    // Haversine formula: given two pair of coordinates (lat/lon) returns the distance between them in metres
-    public static double convertToDistanceUsingDoubles(double lat1, double lon1,
+
+    /** Haversine formula: given two pair of coordinates (lat/lon) returns the distance between them
+     *  in metres */
+    public static double convertToDistance(double lat1, double lon1,
                                                        double lat2, double lon2 ) {
-
-
 
         double earthRadius = 6371000; // metres
         double φ1 = Math.toRadians(lat1);
@@ -147,9 +153,9 @@ public class MathHelper {
         double distanceInMetres = earthRadius * c;
         return distanceInMetres; //metres
     }
-    // given a set of scan results for a certain bssid, this method returns the max among
-    // all distances then approximates coverage as a circle, returning its radius
-    public static double determineCoverage(Cursor cursor, String bssid, double accessPointLatitude, double accessPointLongitude) {
+    /** Given a set of scan results for a certain bssid, this method returns the max among
+     all distances, then approximates coverage as a circle, returning its radius */
+    public static double determineCoverage(Cursor cursor, double accessPointLatitude, double accessPointLongitude) {
 
         int length = cursor.getCount();
         double[] scanLatitudes = new double[length];
@@ -162,7 +168,7 @@ public class MathHelper {
                 scanLatitudes[i] = cursor.getDouble(cursor.getColumnIndexOrThrow(Database.Table2.COLUMN_NAME_SCAN_LATITUDE));
                 scanLongitudes[i] = cursor.getDouble(cursor.getColumnIndexOrThrow(Database.Table2.COLUMN_NAME_SCAN_LONGITUDE));
 
-                distances[i] = convertToDistanceUsingDoubles(accessPointLatitude, accessPointLongitude,
+                distances[i] = convertToDistance(accessPointLatitude, accessPointLongitude,
                         scanLatitudes[i], scanLongitudes[i]);
             }
         }
@@ -172,7 +178,7 @@ public class MathHelper {
         return coverageRadius;
     }
 
-    // returns -1 if values is empty, i'm using it with distances so i know they must be > 0
+    /** values[i] must be > 0, return -1 if values is empty */
     public static double max(double[] values) {
         double max = -1;
         for (double v : values)
@@ -180,5 +186,10 @@ public class MathHelper {
 
         return max;
 
+    }
+
+    public static double truncateDouble(double value) {
+        double newValue = Math.floor(value * 10000) / 10000;
+        return newValue;
     }
 }

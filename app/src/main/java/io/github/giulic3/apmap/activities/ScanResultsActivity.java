@@ -16,15 +16,19 @@ import android.widget.ListView;
 import java.util.ArrayList;
 
 import io.github.giulic3.apmap.R;
-import io.github.giulic3.apmap.models.CustomMap;
+import io.github.giulic3.apmap.models.ListItem;
 import io.github.giulic3.apmap.adapters.CustomAdapter;
 
 public class ScanResultsActivity extends ListActivity {
 
-    private ArrayList<CustomMap> scanResults;
+    private ArrayList<ListItem> scanResults;
+    private ArrayList<String> scanResultSsids;
+    private ArrayList<String> scanResultBssids;
+    private ArrayList<Integer> scanResultLevels;
+
     private CustomAdapter listAdapter;
-    ArrayList<String> scanResultSsids;
-    ArrayList<Integer> scanResultLevels;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         Log.d("DEBUG", "ScanResultsActivity: onCreate()");
@@ -37,6 +41,7 @@ public class ScanResultsActivity extends ListActivity {
         // retrieve data from intent that started this activity (then wait for onReceive())
         Intent intent = getIntent();
         scanResultSsids = intent.getStringArrayListExtra("scanResultSsids");
+        scanResultBssids = intent.getStringArrayListExtra("scanResultBssids");
         scanResultLevels = intent.getIntegerArrayListExtra("scanResultLevels");
 
 
@@ -46,7 +51,7 @@ public class ScanResultsActivity extends ListActivity {
         // setup scanresults arraylist
         if (scanResultSsids != null) {
             for (int i = 0; i < scanResultSsids.size(); i++) {
-                scanResults.add(new CustomMap(scanResultSsids.get(i), scanResultLevels.get(i)));
+                scanResults.add(new ListItem(scanResultSsids.get(i), scanResultBssids.get(i), scanResultLevels.get(i)));
             }
         }
         // setup adapter
@@ -69,21 +74,23 @@ public class ScanResultsActivity extends ListActivity {
         LocalBroadcastManager.getInstance(ScanResultsActivity.this).unregisterReceiver(mDatabaseUpdatesReceiver);
 
     }
-
+    // listens for broadcast intent from UpdateDbTask, updating list when new scan results are available
     private BroadcastReceiver mDatabaseUpdatesReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            scanResultSsids = intent.getStringArrayListExtra("scanResultSsids");
-            scanResultLevels = intent.getIntegerArrayListExtra("scanResultLevels");
 
+            scanResultSsids = intent.getStringArrayListExtra("scanResultSsids");
+            scanResultBssids = intent.getStringArrayListExtra("scanResultBssids");
+            scanResultLevels = intent.getIntegerArrayListExtra("scanResultLevels");
 
             if (scanResultSsids != null) {
                 listAdapter.clear();
 
                 for (int i = 0; i < scanResultSsids.size(); i++) {
-                    scanResults.add(new CustomMap(scanResultSsids.get(i), scanResultLevels.get(i)));
+                    scanResults.add(new ListItem(scanResultSsids.get(i), scanResultBssids.get(i),
+                            scanResultLevels.get(i)));
                 }
-
+                // notify adapter that content changed
                 listAdapter.notifyDataSetChanged();
 
             }

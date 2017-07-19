@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.location.Location;
-import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -24,15 +23,14 @@ import io.github.giulic3.apmap.data.UpdateDbTask;
 public class ApService extends Service {
 
     // used in conjunction with lastknownlocation to determine if can perform scansion
-    private static final long THREAD_SLEEP = 60000; // set 60000
+    private static final long THREAD_SLEEP = 60000;
     private WifiManager mWifiManager;
     private WifiReceiver mWifiReceiver;
     //private Location previousLocation;
     private Location mLastKnownLocation;
-    private DatabaseHelper mDbHelper;
-     // used to count number of scan performed, every 100 scans, will
-    // attempt to perform triangulation again TODO: set to 0 when done testing
-     public static int SCAN_COUNTER = 100;
+    // private DatabaseHelper mDbHelper;
+    // used to count number of scan performed, every 3 scans, will attempt to perform trilateration again
+    public static int SCAN_COUNTER = 0;
 
     /** Called by the system when this service is first created */
     @Override
@@ -45,21 +43,22 @@ public class ApService extends Service {
     }
 
 
-    // called by the system to notify a service is no longer used
-    // should clean up any resources it holds (e.g. threads)
+    /** Called by the system to notify a service is no longer used: clean up any resources
+     * it holds (e.g. threads) **/
     @Override
     public void onDestroy() {
+
         LocalBroadcastManager.getInstance(ApService.this).unregisterReceiver(mLocationReceiver);
 
     }
 
-    // executes when someone calls startService()
+    /** Called when someone calls startService() */
     @Override
     public int onStartCommand(Intent intent, int flags, int startId){
 
         Log.d("DEBUG", "ApService: onStartCommand()");
-        // prova
-        mDbHelper = new DatabaseHelper(getApplicationContext());
+
+        // mDbHelper = new DatabaseHelper(getApplicationContext()); TODO
 
         // setup broadcast receiver
         mWifiReceiver = new WifiReceiver();
@@ -101,16 +100,19 @@ public class ApService extends Service {
     // executes when MainActivity asks to bind with this service
     @Override
     public IBinder onBind(Intent intent) {
+
         // TODO: Return the communication channel to the service.
         throw new UnsupportedOperationException("Not yet implemented");
     }
 
     class WifiReceiver extends BroadcastReceiver {
-        private List<ScanResult> wifiList;
+
+        private List<android.net.wifi.ScanResult> wifiList;
 
         // executes when scan_fab results are available
         @Override
         public void onReceive(Context arg0, Intent arg1) {
+
             ArrayList<AccessPoint> apList = new ArrayList<AccessPoint>();
 
             Log.d("DEBUG", "ApService: onReceive()");
@@ -138,8 +140,6 @@ public class ApService extends Service {
             Context mContext = getApplicationContext();
             new UpdateDbTask(mContext, mDbHelper, mLastKnownLocation).execute(apList);
 
-            Toast toast = Toast.makeText(getApplicationContext(), "Database updated", Toast.LENGTH_SHORT);
-            toast.show();
         }
     }
 

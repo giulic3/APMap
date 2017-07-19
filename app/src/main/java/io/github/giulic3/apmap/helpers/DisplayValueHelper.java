@@ -3,21 +3,22 @@ package io.github.giulic3.apmap.helpers;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 
-// this class is used to display values relative to the access point in the textviews or listview
-// in a readable format
+ /** This class contains methods used to display values relative to the access point in the
+  *  textviews or listview in a human readable format */
+
 public class DisplayValueHelper {
 
-    public DisplayValueHelper(){
+    public DisplayValueHelper(){ }
 
-    }
-    // takes as input a signal level in dBm and returns an integer which represents a percentage of signalQuality
+    /** Takes as input a signal level in dBm and returns an integer which represents signal quality in
+     percentage */
     public int convertLevelToPercentage(int signalLevel) {
 
         int quality = 2* (signalLevel + 100);
         if (quality > 100) return 100; // formula is approximate
         else return quality;
     }
-    // takes lon or lat as input an format value
+    /** Takes lon or lat as input and format value */
     public String formatCoordinate(double coordinate) {
 
         NumberFormat formatter = new DecimalFormat("#00.00");
@@ -34,7 +35,6 @@ public class DisplayValueHelper {
         else if (capabilities.contains("ESS"))
             return "ESS";
         else return "open";
-
 
     }
 }

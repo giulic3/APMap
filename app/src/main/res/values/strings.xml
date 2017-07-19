@@ -1,22 +1,30 @@
 <resources>
     <string name="app_name">APMap</string>
 
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Ciao blank fragment</string>
-    <string name="title_activity_maps">Mappa</string>
+    <string name="hello_blank_fragment"></string>
+    <string name="title_activity_maps">Map</string>
 
-    <string name="title_location_permission">Richiesta dei permessi di geolocalizzazione</string>
-    <string name="text_location_permission">I permessi servono per mostrare la posizione del dispositivo</string>
+    <string name="title_location_permission">Request location permission</string>
+    <string name="text_location_permission">Permission is needed to determine and display your position</string>
     <string name="ok">Accept</string>
 
     <!-- bottomsheet textviews -->
-    <string name="bssid_tag">bssid: %1$s</string>
-    <string name="ssid_tag">ssid: %1$s</string>
-    <string name="capabilities_tag">tipo di sicurezza: %1$s</string>
-    <string name="frequency_tag">frequenza: %1$s</string>
-    <string name="latitude_tag">latitudine: %1$s</string>
-    <string name="longitude_tag">longitudine: %1$s</string>
-    <string name="coverage_radius_tag">raggio di copertura: %1$s</string>
+    <string name="bssid_tag">bssid :  %1$s</string>
+    <string name="ssid_tag">ssid :  %1$s</string>
+    <string name="capabilities_tag">security type :  %1$s</string>
+    <string name="frequency_tag">frequency (MhZ) :  %1$s</string>
+    <string name="latitude_tag">latitude (°) :  %1$s</string>
+    <string name="longitude_tag">longitude (°) :  %1$s</string>
+    <string name="coverage_radius_tag">coverage radius (m) :  %1$s</string>
+
+    <!-- marker visualization methods -->
+    <string name="show_all">Show all</string>
+    <string name="show_open">Show only open networks</string>
+    <string name="show_closed">Show only closed networks</string>
+    <string name="show_range">Show only access point in range</string>
+    <string name="hide_coverage">Hide coverage</string>
+    <string name="show_coverage">Show coverage</string>
+
 
 
 </resources>

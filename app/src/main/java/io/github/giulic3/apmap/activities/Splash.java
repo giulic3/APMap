@@ -9,7 +9,7 @@ import io.github.giulic3.apmap.R;
 
 public class Splash extends AppCompatActivity {
 
-    // Duration of wait
+    // duration of wait
     private final int SPLASH_DISPLAY_LENGTH = 2000;
 
     // called when the activity is first created

@@ -1,16 +1,9 @@
 package io.github.giulic3.apmap.data;
 
-
-import android.content.ContentValues;
-import android.content.Context;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteException;
-import android.database.sqlite.SQLiteOpenHelper;
 import android.provider.BaseColumns;
 
 public class Database {
-    // Inner classes that define tables contents
+
     public static class Table1 implements BaseColumns {
         public static final String TABLE_NAME = "AccessPointInfo";
         public static final String COLUMN_NAME_BSSID = "bssid";

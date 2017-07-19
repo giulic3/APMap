@@ -1,6 +1,5 @@
 package io.github.giulic3.apmap.models;
 
-//TODO: CHANGE NAME IN SCANRESULT
 public class AccessPoint {
 
     private String bssid;
@@ -11,7 +10,7 @@ public class AccessPoint {
     private long timestamp;
 
     public AccessPoint(String bssid, String ssid, String capabilities, int frequency, int level,
-                        long timestamp){
+                       long timestamp){
 
         this.bssid = bssid;
         this.ssid = ssid;

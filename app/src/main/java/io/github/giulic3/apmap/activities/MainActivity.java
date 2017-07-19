@@ -60,17 +60,9 @@ import io.github.giulic3.apmap.data.Database;
 import io.github.giulic3.apmap.data.DatabaseHelper;
 import io.github.giulic3.apmap.helpers.DisplayValueHelper;
 import io.github.giulic3.apmap.helpers.VisualizationHelper;
-import io.github.giulic3.apmap.models.AccessPoint;
 import io.github.giulic3.apmap.models.AccessPointInfoEntry;
 import io.github.giulic3.apmap.services.ApService;
 import io.github.giulic3.apmap.services.LocationService;
-
-// this activity has the following responsibilities
-// - inflates layout(s)
-// - starts and communicates with services
-// - handles events (scan_fab)
-// - handles permissions
-// - setup map
 
 // TODO reorder or split methods
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,
@@ -94,9 +86,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private ArrayList<Marker> mMarkerArray; //used to save all the markers on map
     private ArrayList<Circle> mCircles; //used to save all the circles associated to markers
     private ArrayList<String> scanResultSsids;
+    private ArrayList<String> scanResultBssids;
     private ArrayList<Integer> scanResultLevels;
     // views
-    private FloatingActionButton button; //temporary
+    private FloatingActionButton button; //temporary TODO:
     private BottomSheetBehavior mBottomSheetBehavior;
     private FloatingActionButton mButton;
 
@@ -201,6 +194,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     // pass through the intent the scan results obtained from mDatabaseReceiver
                     Intent intent = new Intent(MainActivity.this, ScanResultsActivity.class);
                     intent.putStringArrayListExtra("scanResultSsids", scanResultSsids);
+                    intent.putStringArrayListExtra("scanResultBssids", scanResultBssids);
                     intent.putIntegerArrayListExtra("scanResultLevels", scanResultLevels);
                     startActivity(intent);
                 }
@@ -285,7 +279,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         Cursor cursor = mDbHelper.getAll(Database.Table1.TABLE_NAME);
         mMap.setOnMarkerClickListener(this);
-        // Set a listener for info window events.
+        // set a listener for info window events.
         mMap.setOnInfoWindowClickListener(this);
 
         if (cursor.moveToFirst()) {
@@ -412,7 +406,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         marker.hideInfoWindow();
     }
 
-    // callback interface for when the map is ready to be used
+    /** Called when the map is ready to be used */
     @Override
     public void onMapReady(GoogleMap googleMap) {
 
@@ -435,7 +429,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private BroadcastReceiver mLocationReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            // Get extra data included in the Intent
+            // get extra data included in the Intent
             String message = intent.getStringExtra("Status");
             Bundle b = intent.getBundleExtra("Location");
             mLastKnownLocation = (Location) b.getParcelable("Location");
@@ -445,6 +439,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 // move camera to current position and focus
                 mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 14), 2000, null);
+                // so that the camera moves only at the first update
                 isFirstUpdate = false;
             }
         }
@@ -456,11 +451,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             Log.d("DEBUG", "MainActivity: mDatabaseUpdatesReceiver onReceive()");
             ArrayList<String> updatedApBssid = intent.getStringArrayListExtra("updatedApBssid");
-            Log.d("DEBUG", "MainActivity: updatedApBssid size: "+updatedApBssid.size());
-
-            Toast toast = Toast.makeText(getApplicationContext(),
-                    "updatedApBssid size: "+updatedApBssid.size(), Toast.LENGTH_SHORT);
-            toast.show();
 
             for (int i = 0; i < updatedApBssid.size(); i++) {
 
@@ -473,15 +463,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         double lon = cursor.getDouble(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_ESTIMATED_LONGITUDE));
                         double radius = cursor.getDouble(cursor.getColumnIndex((Database.Table1.COLUMN_NAME_COVERAGE_RADIUS)));
                         addMarker(cursor, lat, lon, radius);
-                        Toast toast2 = Toast.makeText(getApplicationContext(),
-                                "new marker added", Toast.LENGTH_SHORT);
-                        toast2.show();
                     }
                 }
             }
 
             // TODO:
             scanResultSsids = intent.getStringArrayListExtra("scanResultSsids");
+            scanResultBssids = intent.getStringArrayListExtra("scanResultBssids");
             scanResultLevels = intent.getIntegerArrayListExtra("scanResultLevels");
 
         }
@@ -535,7 +523,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
     }
-    //TODO: boilerplate
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
         Log.d("DEBUG", "MainActivity: onActivityResult()");
@@ -556,10 +544,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-// mechanism to request location permissions at runtime
+    // mechanism to request location permissions at runtime
     public static final int MY_PERMISSIONS_REQUEST_LOCATION = 99;
 
-    // if access_fine_location is granted, automatically it is granted coarse_loc too
+    /** This method checks if permission was granted, if not, it requests location permession at runtime */
     public boolean checkLocationPermission() {
 
         Log.d("DEBUG", "MainActivity: checkLocationPermission()");
@@ -579,14 +567,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 return true;
             }
         }
-            // means permission was granted during installation
+            // means permission was granted during installation, api < 23
         else {
                 return true;
         }
 
     }
 
-    // this callback handles the user answers to the location request
+    /** This callback handles the user's answer to the location permission request */
     @Override
     public void onRequestPermissionsResult(int requestCode,
                                            String permissions[], int[] grantResults) {

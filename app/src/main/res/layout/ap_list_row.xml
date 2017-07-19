@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-                xmlns:tools="http://schemas.android.com/tools"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
+                android:orientation="vertical"
                 android:padding="5dip" >
 
 
@@ -16,13 +15,20 @@
             android:typeface="sans" />
 
         <TextView
+            android:id="@+id/list_bssid"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#A2A9AC"
+            android:textSize="12sp"
+            android:typeface="sans"/>
+
+        <TextView
             android:id="@+id/list_level"
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
             android:layout_below="@id/list_ssid"
             android:layout_marginTop="1dip"
             android:textColor="#d50000"
-            android:textSize="15sp"
-            tools:ignore="SmallSp"/>
+            android:textSize="15sp"/>
 
-</RelativeLayout>
+</LinearLayout>

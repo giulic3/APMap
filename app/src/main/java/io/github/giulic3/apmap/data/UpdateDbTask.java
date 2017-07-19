@@ -15,86 +15,52 @@ import io.github.giulic3.apmap.helpers.MathHelper;
 import io.github.giulic3.apmap.models.AccessPoint;
 import io.github.giulic3.apmap.services.ApService;
 
-// TODO: reorder or split methods
 public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Integer> {
 
-    private Location scanningLocation;     // device location when ap scanning started
+    private static final int SCAN_LIMIT = 3; // trying to perform trilateration every 3 scans
+
+    private Location scanningLocation; // device location when ap scanning started
     private DatabaseHelper dbHelper;
     Context mContext;
 
     ArrayList<AccessPoint> apList;
-    private static final int SCAN_LIMIT = 50;
-    private ArrayList<String> updatedApBssid; // bssids of the aps that received lat/lon/coverage with last db update
+    private ArrayList<String> updatedApBssid; // aps (=bssids) that got lat/lon/coverage with last db update
 
     public UpdateDbTask(Context context, DatabaseHelper dbHelper, Location scanningLocation) {
         this.mContext = context;
         this.dbHelper = dbHelper;
         this.scanningLocation = scanningLocation;
     }
-    // executed before starting the new thread, used for variable initialization
+
+    // Called before starting the new thread, used for variable initialization
     protected void onPreExecute(){
         updatedApBssid = new ArrayList<String>();
 
     }
 
-    // all the stuff to be done in background
+
     protected Integer doInBackground(ArrayList<AccessPoint> ... aps) { //TODO refactor method
 
         Log.d("DEBUG", "UpdateDbTask: doInBackground()");
 
-        dbHelper.printAll(Database.Table2.TABLE_NAME);
+        updateDatabaseWithScanResults(aps[0]);
 
-        // for each ap found (note that the apList is in aps[0])
-        for (int i = 0; i < aps[0].size(); i++) {
-            // insert in db as scan_fab object only if there wasn't already a scan_fab for that bssid at those lat/lon
-            // look for a scanresult in scan_fab table at a given lat lon
-            if (scanningLocation != null) { // TODO: transform in method...
-                double lat = Math.floor(scanningLocation.getLatitude() * 10000) / 10000;
-                double lon = Math.floor(scanningLocation.getLongitude() * 10000) / 10000;
-
-                boolean scanFound = dbHelper.searchBssidGivenLatLon(aps[0].get(i).getBssid(), lat, lon);
-                // used to avoid doubles that mess with trilateration algorithm
-                if (!scanFound) {
-                    Log.d("DEBUG", "UpdateDbTask in scanFound");
-
-                    dbHelper.insertScanObject(aps[0].get(i).getBssid(),
-                            aps[0].get(i).getTimestamp(),
-                            lat,
-                            lon,
-                            aps[0].get(i).getLevel());
-
-                }
-
-                // insert in table AccessPointInfoEntry (only if it's the first scan for this ap)
-                boolean isFound = dbHelper.searchBssid(Database.Table1.TABLE_NAME, aps[0].get(i).getBssid());
-                if (!isFound) {
-                    dbHelper.insertAp(aps[0].get(i).getBssid(),
-                            aps[0].get(i).getSsid(),
-                            aps[0].get(i).getCapabilities(),
-                            aps[0].get(i).getFrequency());
-                }
-        }
-        }
-
-        // perform approximation only every tot scans
+        // perform trilateration only every x scans
         if (ApService.SCAN_COUNTER >= SCAN_LIMIT) {
-            // i could move everything inside databasehelper TODO
+
             Cursor cursor = dbHelper.getInputSetForTrilateration();
 
             if (cursor.moveToFirst()) {
+                //get the first bssid
                 String currentBssid = cursor.getString(
                         cursor.getColumnIndexOrThrow(Database.Table1.COLUMN_NAME_BSSID));
-                  //get the first bssid
 
                 int j = 0;
-                boolean gettingTrilateration = true; // dev'essere true all'inizio
-                // assegno il bssid, prendo le prime 3 misure che trovo, costruisco latlng + distances
-                // dopo aver approssimato scalo al prossimo bssid
-                // e continuo
-                LatLng[] latLngs = new LatLng[3]; // works only with three points
+                boolean gettingTrilateration = true;
+                LatLng[] latLngs = new LatLng[3];
                 double[] distances = new double[3];
                 do {
-                    // if it differs, it means i can start with trilateration for a new bssid, at the beginning is always true
+                    // if it differs, means we can start with trilateration for a new bssid, at the beginning is always true
                     if (!cursor.getString(cursor.getColumnIndexOrThrow(Database.Table1.COLUMN_NAME_BSSID)).equals(currentBssid)) {
                         gettingTrilateration = true;
                         currentBssid = cursor.getString(
@@ -119,19 +85,17 @@ public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Intege
                                     "longitude " + res.longitude);
                             // then update position in db (only if trilateration went well)
                             if (!Double.isNaN(res.latitude) && !Double.isNaN(res.longitude)) {
-                                // testing when it is better to approximate? also before coverage?
-                                double newLat = Math.floor(res.latitude * 10000) / 10000;
-                                double newLon = Math.floor(res.longitude * 10000) / 10000;
+
+                                double newLat = MathHelper.truncateDouble(res.latitude);
+                                double newLon = MathHelper.truncateDouble(res.longitude);
                                 // update coverage
                                 Cursor covCursor = dbHelper.searchScanResultsForCoverage(Database.Table2.TABLE_NAME, currentBssid);
-                                double coverageRadius = MathHelper.determineCoverage(covCursor, currentBssid, newLat, newLon);
+                                double coverageRadius = MathHelper.determineCoverage(covCursor, newLat, newLon);
                                 // patch value in case the math fails
                                 if (coverageRadius > 100)
                                     coverageRadius = 30;
-                                // approximate again before saving (see if it works) // TODO test
-                                //double newLat = Math.floor(res.latitude * 100000) / 100000;
-                                //double newLon = Math.floor(res.longitude * 100000) / 100000;
-                                Log.d("DEBUG", "UpdateDbTask: newLat and newLon: "+String.valueOf(newLat)+" "+String.valueOf(newLon));
+                                // approximate lat and lon again before saving (see if it works) // TODO test
+
                                 dbHelper.updateAp(currentBssid, null, null, newLat, newLon, coverageRadius);
                                 // add to list  of updated bssid
                                 updatedApBssid.add(currentBssid);
@@ -148,10 +112,9 @@ public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Intege
                 while (cursor.moveToNext());
             }
 
-            //ApService.SCAN_COUNTER = 0; // TODO: uncomment when done testing
+            ApService.SCAN_COUNTER = 0;
             cursor.close();
         }
-        //dbHelper.close();
 
         Log.d("DEBUG", "UpdateDbTask: doInBackground() ended");
         apList = aps[0];
@@ -159,9 +122,42 @@ public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Intege
 
     }
 
-    protected void onProgressUpdate(Void... progress) {
+
+    private void updateDatabaseWithScanResults(ArrayList<AccessPoint> aps) {
+
+        // for each ap found
+        for (int i = 0; i < aps.size(); i++) {
+            // insert in db as scan object only if there wasn't already a scan for that bssid at those lat/lon
+            if (scanningLocation != null) {
+                //double lat = Math.floor(scanningLocation.getLatitude() * 10000) / 10000; TODO
+                //double lon = Math.floor(scanningLocation.getLongitude() * 10000) / 10000;
+                double lat = MathHelper.truncateDouble(scanningLocation.getLatitude());
+                double lon = MathHelper.truncateDouble(scanningLocation.getLongitude());
+                boolean scanFound = dbHelper.searchBssidGivenLatLon(aps.get(i).getBssid(), lat, lon);
+                // avoid duplicates in ScanResult table
+                if (!scanFound) {
+
+                    dbHelper.insertScanObject(aps.get(i).getBssid(),
+                            aps.get(i).getTimestamp(),
+                            lat,
+                            lon,
+                            aps.get(i).getLevel());
+
+                }
+                // avoid duplicates in AccessPointInfo table
+                // insert in table only if it's the first scan for this ap
+                boolean isFound = dbHelper.searchBssid(Database.Table1.TABLE_NAME, aps.get(i).getBssid());
+                if (!isFound) {
+                    dbHelper.insertAp(aps.get(i).getBssid(),
+                            aps.get(i).getSsid(),
+                            aps.get(i).getCapabilities(),
+                            aps.get(i).getFrequency());
+                }
+            }
+        }
 
     }
+    protected void onProgressUpdate(Void... progress) { }
 
     //TODO: e quelli che erano già sulla mappa? casino (può succedere se c'è un cambio di ssid ad es.)
     protected void onPostExecute(Integer result) {
@@ -177,14 +173,14 @@ public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Intege
             scanResultSsids.add(apList.get(i).getSsid());
             scanResultLevels.add(apList.get(i).getLevel());
         }
-        // send also the local broadcast to update the level in the textviews (with the scan results apList)
+        // also send the local broadcast to update the level in the textviews (with the scan results apList)
         Intent intent = new Intent("DatabaseUpdates");
         intent.putStringArrayListExtra("updatedApBssid", updatedApBssid);
-        intent.putStringArrayListExtra("scanResultBssids", scanResultBssids); //not needed anymore
+        intent.putStringArrayListExtra("scanResultBssids", scanResultBssids); 
         intent.putStringArrayListExtra("scanResultSsids", scanResultSsids);
         intent.putIntegerArrayListExtra("scanResultLevels", scanResultLevels);
 
-        // mContext refers to ApService that started the asynctask instance
+        // mContext refers to ApService that started the AsyncTask instance
         LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
 
     }
