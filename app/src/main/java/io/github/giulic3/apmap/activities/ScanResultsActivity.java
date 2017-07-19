@@ -6,10 +6,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.provider.Settings;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.content.LocalBroadcastManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.AdapterView;
 import android.widget.ListView;
 
@@ -18,6 +21,8 @@ import java.util.ArrayList;
 import io.github.giulic3.apmap.R;
 import io.github.giulic3.apmap.models.ListItem;
 import io.github.giulic3.apmap.adapters.CustomAdapter;
+import io.github.giulic3.apmap.services.ApService;
+import io.github.giulic3.apmap.services.LocationService;
 
 public class ScanResultsActivity extends ListActivity {
 
@@ -27,6 +32,8 @@ public class ScanResultsActivity extends ListActivity {
     private ArrayList<Integer> scanResultLevels;
 
     private CustomAdapter listAdapter;
+    private FloatingActionButton syncButton;
+    private Animation rotation;
 
 
     @Override
@@ -66,10 +73,26 @@ public class ScanResultsActivity extends ListActivity {
                 startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
             }
         });
+
+        syncButton = (FloatingActionButton) findViewById(R.id.sync_fab_id);
+        if (syncButton != null) {
+            syncButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+
+                    Log.d("DEBUG", "ScanResultsActivity syncing");
+                    startService(new Intent(ScanResultsActivity.this, ApService.class));
+                    rotation = AnimationUtils.loadAnimation(ScanResultsActivity.this, R.anim.rotation);
+                    syncButton.startAnimation(rotation);
+
+                }
+            });
+        }
     }
 
     @Override
     protected void onStop(){
+        Log.d("DEBUG", "ScanResultsActivity: onStop()");
         super.onStop();
         LocalBroadcastManager.getInstance(ScanResultsActivity.this).unregisterReceiver(mDatabaseUpdatesReceiver);
 
@@ -78,6 +101,8 @@ public class ScanResultsActivity extends ListActivity {
     private BroadcastReceiver mDatabaseUpdatesReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+
+            Log.d("DEBUG", "ScanResultsActivity: mDatabaseUpdatesReceiver onReceive");
 
             scanResultSsids = intent.getStringArrayListExtra("scanResultSsids");
             scanResultBssids = intent.getStringArrayListExtra("scanResultBssids");
@@ -92,7 +117,9 @@ public class ScanResultsActivity extends ListActivity {
                 }
                 // notify adapter that content changed
                 listAdapter.notifyDataSetChanged();
-
+                if (syncButton != null) {
+                    syncButton.clearAnimation();
+                }
             }
         }
     };

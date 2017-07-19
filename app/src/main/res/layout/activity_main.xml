@@ -23,7 +23,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"> <!-- 600dp FIX HEIGHT, NOT SCROLLING ON SMALLER DEVICES-->
-
+                <!--
                 <android.support.design.widget.FloatingActionButton
                     android:id="@+id/button_db"
                     android:layout_width="wrap_content"
@@ -31,6 +31,7 @@
                     android:layout_gravity="bottom|start"
                     android:layout_margin="16dp"
                     android:clickable="true"/>
+                    -->
 
                 <android.support.design.widget.FloatingActionButton
                     android:id="@+id/scan_fab_id"

@@ -202,7 +202,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
         // TODO: temporary: setting db button
-
+        /*
         FloatingActionButton button = (FloatingActionButton) findViewById(R.id.button_db);
         if (button != null) {
             button.setOnClickListener(new View.OnClickListener() {
@@ -213,6 +213,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 }
             });
         }
+        */
     }
     /** Called just before the activity is destroyed. */
     @Override
@@ -467,7 +468,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 }
             }
 
-            // TODO:
             scanResultSsids = intent.getStringArrayListExtra("scanResultSsids");
             scanResultBssids = intent.getStringArrayListExtra("scanResultBssids");
             scanResultLevels = intent.getIntegerArrayListExtra("scanResultLevels");

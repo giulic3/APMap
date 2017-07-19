@@ -31,6 +31,7 @@ public class ApService extends Service {
     // private DatabaseHelper mDbHelper;
     // used to count number of scan performed, every 3 scans, will attempt to perform trilateration again
     public static int SCAN_COUNTER = 0;
+    private boolean isServiceAlive;
 
     /** Called by the system when this service is first created */
     @Override
@@ -38,28 +39,7 @@ public class ApService extends Service {
 
         Log.d("DEBUG", "ApService: onCreate()");
 
-        LocalBroadcastManager.getInstance(ApService.this).registerReceiver(
-                mLocationReceiver, new IntentFilter("GPSLocationUpdates"));
-    }
-
-
-    /** Called by the system to notify a service is no longer used: clean up any resources
-     * it holds (e.g. threads) **/
-    @Override
-    public void onDestroy() {
-
-        LocalBroadcastManager.getInstance(ApService.this).unregisterReceiver(mLocationReceiver);
-
-    }
-
-    /** Called when someone calls startService() */
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId){
-
-        Log.d("DEBUG", "ApService: onStartCommand()");
-
-        // mDbHelper = new DatabaseHelper(getApplicationContext()); TODO
-
+        isServiceAlive = true;
         // setup broadcast receiver
         mWifiReceiver = new WifiReceiver();
 
@@ -67,21 +47,21 @@ public class ApService extends Service {
         mWifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
 
 
-        if(!mWifiManager.isWifiEnabled()) {
+        if (!mWifiManager.isWifiEnabled()) {
             mWifiManager.setWifiEnabled(true);
         }
 
         new Thread(new Runnable(){
             public void run() {
 
-                while(true)
+                while(isServiceAlive)
                 {
                     try {
                         Log.d("DEBUG", "ApService: in thread startScan()");
 
+                        Thread.sleep(THREAD_SLEEP);
                         mWifiManager.startScan();
                         SCAN_COUNTER++;
-                        Thread.sleep(THREAD_SLEEP);
 
 
                     } catch (InterruptedException e) {
@@ -92,6 +72,32 @@ public class ApService extends Service {
 
             }
         }).start();
+
+        LocalBroadcastManager.getInstance(ApService.this).registerReceiver(
+                mLocationReceiver, new IntentFilter("GPSLocationUpdates"));
+
+
+    }
+
+
+    /** Called by the system to notify a service is no longer used: clean up any resources
+     * it holds (e.g. threads) **/
+    @Override
+    public void onDestroy() {
+
+        isServiceAlive = false;
+        LocalBroadcastManager.getInstance(ApService.this).unregisterReceiver(mLocationReceiver);
+
+    }
+
+    /** Called when someone calls startService() */
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId){
+
+        Log.d("DEBUG", "ApService: onStartCommand()");
+        // used for syncing, the first scan is on the main thread
+        mWifiManager.startScan();
+        SCAN_COUNTER++;
 
         // automatically restarts service if killed
         return START_STICKY;
