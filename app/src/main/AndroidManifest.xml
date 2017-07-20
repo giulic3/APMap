@@ -61,9 +61,6 @@
 
 
         <!-- REMOVE LATER -->
-        <activity
-            android:name=".activities.AndroidDatabaseManager"
-            android:theme="@style/Theme.AppCompat.Light"/>
 
         <service
             android:name=".services.ApService"

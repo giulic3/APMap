@@ -9,7 +9,6 @@ import android.provider.Settings;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.content.LocalBroadcastManager;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
@@ -22,7 +21,6 @@ import io.github.giulic3.apmap.R;
 import io.github.giulic3.apmap.models.ListItem;
 import io.github.giulic3.apmap.adapters.CustomAdapter;
 import io.github.giulic3.apmap.services.ApService;
-import io.github.giulic3.apmap.services.LocationService;
 
 public class ScanResultsActivity extends ListActivity {
 
@@ -38,7 +36,6 @@ public class ScanResultsActivity extends ListActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        Log.d("DEBUG", "ScanResultsActivity: onCreate()");
 
         super.onCreate(savedInstanceState);
         // inflate layout
@@ -69,7 +66,6 @@ public class ScanResultsActivity extends ListActivity {
         // setting listener on list items
         listView.setOnItemClickListener(new android.widget.AdapterView.OnItemClickListener() {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                Log.d("DEBUG", "ScanResultsActivity: onItemClick()");
                 startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
             }
         });
@@ -80,7 +76,6 @@ public class ScanResultsActivity extends ListActivity {
                 @Override
                 public void onClick(View view) {
 
-                    Log.d("DEBUG", "ScanResultsActivity syncing");
                     startService(new Intent(ScanResultsActivity.this, ApService.class));
                     rotation = AnimationUtils.loadAnimation(ScanResultsActivity.this, R.anim.rotation);
                     syncButton.startAnimation(rotation);
@@ -92,7 +87,7 @@ public class ScanResultsActivity extends ListActivity {
 
     @Override
     protected void onStop(){
-        Log.d("DEBUG", "ScanResultsActivity: onStop()");
+
         super.onStop();
         LocalBroadcastManager.getInstance(ScanResultsActivity.this).unregisterReceiver(mDatabaseUpdatesReceiver);
 
@@ -101,8 +96,6 @@ public class ScanResultsActivity extends ListActivity {
     private BroadcastReceiver mDatabaseUpdatesReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-
-            Log.d("DEBUG", "ScanResultsActivity: mDatabaseUpdatesReceiver onReceive");
 
             scanResultSsids = intent.getStringArrayListExtra("scanResultSsids");
             scanResultBssids = intent.getStringArrayListExtra("scanResultBssids");

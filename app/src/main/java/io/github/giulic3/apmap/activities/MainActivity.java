@@ -22,13 +22,11 @@ import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.google.android.gms.common.api.PendingResult;
 import com.google.android.gms.common.api.ResultCallback;
@@ -88,7 +86,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private ArrayList<String> scanResultBssids;
     private ArrayList<Integer> scanResultLevels;
     // views
-    private FloatingActionButton button; //temporary TODO:
     private BottomSheetBehavior mBottomSheetBehavior;
     private FloatingActionButton mButton;
 
@@ -113,7 +110,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
-        Log.d("DEBUG", "MainActivity: onCreate()");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -151,15 +147,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     /** Called when the activity is about to become visible. */
     protected void onStart() {
 
-        Log.d("DEBUG", "MainActivity: onStart()");
-
         super.onStart();
     }
     /** Called when the activity is no longer visible. */
     @Override
     protected void onStop() {
-
-        Log.d("DEBUG", "MainActivity: onStop()");
 
         super.onStop();
         // unbind from the service
@@ -173,8 +165,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     /** Called when the activity has become visible. */
     @Override
     protected void onResume() {
-
-        Log.d("DEBUG", "MainActivity: onResume()");
 
         super.onResume();
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
@@ -199,19 +189,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             });
         }
 
-        // TODO: temporary: setting db button
-        /*
-        FloatingActionButton button = (FloatingActionButton) findViewById(R.id.button_db);
-        if (button != null) {
-            button.setOnClickListener(new View.OnClickListener() {
-                public void onClick(View v) {
-
-                    Intent dbmanager = new Intent(MainActivity.this, AndroidDatabaseManager.class);
-                    startActivity(dbmanager);
-                }
-            });
-        }
-        */
     }
     /** Called just before the activity is destroyed. */
     @Override
@@ -263,7 +240,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     with an AccessPointInfoEntry object **/
     private void populateMap() {
 
-        Log.d("DEBUG", "MainActivity: populateMap()");
         apInfoList = new ArrayList<AccessPointInfoEntry>();
         mMarkerArray = new ArrayList<Marker>();
         mCircles = new ArrayList<Circle>();
@@ -292,7 +268,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void addMarker(Cursor cursor, Double latitude, Double longitude, Double coverageRadius){
 
-        Log.d("DEBUG", "MainActivity: addMarker()");
         // info needed to determine marker color
         String capabilities = cursor.getString(cursor.getColumnIndex(Database.Table1.COLUMN_NAME_CAPABILITIES));
         String securityType = getAccessPointSecurityType(capabilities);
@@ -357,8 +332,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public boolean onMarkerClick(Marker marker){
 
-        Log.d("DEBUG", "MainActivity: onMarkerClick()");
-
         TextView bssidTv = (TextView) findViewById(R.id.bssid);
         TextView ssidTv = (TextView) findViewById(R.id.ssid);
         TextView capabilitiesTv = (TextView) findViewById(R.id.capabilities);
@@ -400,11 +373,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(GoogleMap googleMap) {
 
-        Log.d("DEBUG", "MainActivity: onMapReady()");
-
         mMap = googleMap;
-
-        // setUpMap();
 
         if ((ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) && (mMap != null)) {
@@ -439,7 +408,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         @Override
         public void onReceive(Context context, Intent intent) {
 
-            Log.d("DEBUG", "MainActivity: mDatabaseUpdatesReceiver onReceive()");
             ArrayList<String> updatedApBssid = intent.getStringArrayListExtra("updatedApBssid");
 
             for (int i = 0; i < updatedApBssid.size(); i++) {
@@ -470,8 +438,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     // this method creates a Location Settings Request specifying all kinds of requests that will be asked
      public void requestLocationSettings(){
-
-         Log.d("DEBUG", "MainActivity: requestLocationSettings()");
 
         LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
                 .addLocationRequest(mLocationRequest); //currently only high priority
@@ -515,7 +481,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
-        Log.d("DEBUG", "MainActivity: onActivityResult()");
+
         final LocationSettingsStates states = LocationSettingsStates.fromIntent(intent);
         switch (requestCode) {
             case REQUEST_CHECK_SETTINGS:
@@ -538,8 +504,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     /** This method checks if permission was granted, if not, it requests location permession at runtime */
     public boolean checkLocationPermission() {
-
-        Log.d("DEBUG", "MainActivity: checkLocationPermission()");
 
         // checking permissions at runtime only for api level greater or equal than 23
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
@@ -568,7 +532,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onRequestPermissionsResult(int requestCode,
                                            String permissions[], int[] grantResults) {
 
-        Log.d("DEBUG", "MainActivity: onRequestPermissionsResult()");
         switch (requestCode) {
             case MY_PERMISSIONS_REQUEST_LOCATION: {
                 // if request is cancelled, the result arrays are empty

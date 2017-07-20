@@ -52,8 +52,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
    // insert entry in AccessPointInfo table
    public long insertAp(String bssid, String ssid, String capabilities, int frequency) {
 
-       Log.d("DEBUG", "DatabaseHelper: insertAp()");
-
         // gets the data repository in write mode
         SQLiteDatabase db = this.getWritableDatabase();
 
@@ -79,7 +77,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public boolean updateAp(String bssid, String ssid, String capabilities, Double estimatedLatitude,
                             Double estimatedLongitude, Double coverageRadius){
 
-        Log.d("DEBUG", "DatabaseHelper: updateAp()");
 
         SQLiteDatabase db = this.getWritableDatabase();
         // search an access point by bssid and update
@@ -112,7 +109,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public long insertScanObject(String bssid, long timestamp,
                                  double scanLatitude, double scanLongitude, int level) {
 
-        Log.d("DEBUG", "DatabaseHelper: insertScanObject()");
 
         SQLiteDatabase db = this.getWritableDatabase();
 
@@ -174,7 +170,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     // return all aps with lat/lon = null but a sufficient number of measures in ScanResult to perform triangulation
     public Cursor getInputSetForTrilateration(){
 
-        Log.d("DEBUG", "DatabaseHelper: getInputSetForTrilateration()");
         SQLiteDatabase db = this.getReadableDatabase();
         String query = "SELECT COUNT("+Database.Table1.TABLE_NAME+"."+Database.Table1.COLUMN_NAME_BSSID+"), "
                 + Database.Table1.TABLE_NAME+"."+Database.Table1.COLUMN_NAME_BSSID+
@@ -235,7 +230,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     // also similar to searchBssid(), different in return type
     public Cursor searchScanResultsForCoverage(String scanTableName, String bssid) {
 
-        Log.d("DEBUG", "DatabaseHelper: searchScanResultsForCoverage()");
         SQLiteDatabase db = this.getReadableDatabase();
         String selection = Database.Table1.COLUMN_NAME_BSSID +" = ?";
         String[] selectionArgs = { bssid };
@@ -275,7 +269,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         else return false; // returns false if no ap was found
     }
 
+    // gets all entries of given table
+    public Cursor getAll(String tableName) {
 
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.query(tableName, null, null, null, null, null, null);
+
+        return cursor;
+    }
 
     /* FOR TESTING AND DEBUGGING */
 
@@ -309,7 +310,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     // prints all entries of a table
     public void printAll(String tableName) {
-        Log.d("DEBUG", "DatabaseHelper: printAll()");
 
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor cursor = db.query(tableName, null, null, null, null, null, null);
@@ -329,57 +329,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.close();
     }
 
-    // gets all entries of given table
-    public Cursor getAll(String tableName) {
-        Log.d("DEBUG", "DatabaseHelper: getAll()");
-        SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.query(tableName, null, null, null, null, null, null);
 
-        return cursor;
-    }
 
-// THIS CLASS IS USED TO SEE CONTENT OF DATABASE ON DEVICE, REMOVE WHEN DONE
-    public ArrayList<Cursor> getData(String Query){
-        //get writable database
-        SQLiteDatabase sqlDB = this.getWritableDatabase();
-        String[] columns = new String[] { "message" };
-        //an array list of cursor to save two cursors one has results from the query
-        //other cursor stores error message if any errors are triggered
-        ArrayList<Cursor> alc = new ArrayList<Cursor>(2);
-        MatrixCursor Cursor2= new MatrixCursor(columns);
-        alc.add(null);
-        alc.add(null);
-
-        try{
-            String maxQuery = Query ;
-            //execute the query results will be save in Cursor c
-            Cursor c = sqlDB.rawQuery(maxQuery, null);
-
-            //add value to cursor2
-            Cursor2.addRow(new Object[] { "Success" });
-
-            alc.set(1,Cursor2);
-            if (null != c && c.getCount() > 0) {
-
-                alc.set(0,c);
-                c.moveToFirst();
-
-                return alc ;
-            }
-            return alc;
-        } catch(SQLException sqlEx){
-            Log.d("printing exception", sqlEx.getMessage());
-            //if any exceptions are triggered save the error message to cursor an return the arraylist
-            Cursor2.addRow(new Object[] { ""+sqlEx.getMessage() });
-            alc.set(1,Cursor2);
-            return alc;
-        } catch(Exception ex){
-            Log.d("printing exception", ex.getMessage());
-
-            //if any exceptions are triggered save the error message to cursor an return the arraylist
-            Cursor2.addRow(new Object[] { ""+ex.getMessage() });
-            alc.set(1,Cursor2);
-            return alc;
-        }
-    }
 }

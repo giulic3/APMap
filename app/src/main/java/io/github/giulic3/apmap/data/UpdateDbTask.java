@@ -6,7 +6,6 @@ import android.database.Cursor;
 import android.location.Location;
 import android.os.AsyncTask;
 import android.support.v4.content.LocalBroadcastManager;
-import android.util.Log;
 
 import com.google.android.gms.maps.model.LatLng;
 import java.util.ArrayList;
@@ -40,8 +39,6 @@ public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Intege
 
 
     protected Integer doInBackground(ArrayList<AccessPoint> ... aps) {
-
-        Log.d("DEBUG", "UpdateDbTask: doInBackground()");
 
         updateDatabaseWithScanResults(aps[0]);
 
@@ -81,8 +78,7 @@ public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Intege
                         if (j == 2) {
                             LatLng res = MathHelper.getLocationByTrilateration(latLngs[0], distances[0],
                                     latLngs[1], distances[1], latLngs[2], distances[2]);
-                            Log.d("DEBUG", "UpdateDbTask: latitude " + res.latitude + "\n" +
-                                    "longitude " + res.longitude);
+
                             // then update position in db (only if trilateration went well)
                             if (!Double.isNaN(res.latitude) && !Double.isNaN(res.longitude)) {
 
@@ -94,7 +90,6 @@ public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Intege
                                 // patch value in case the math fails
                                 if (coverageRadius > 100)
                                     coverageRadius = 30;
-                                // approximate lat and lon again before saving (see if it works) // TODO test
 
                                 dbHelper.updateAp(currentBssid, null, null, newLat, newLon, coverageRadius);
                                 // add to list  of updated bssid
@@ -116,7 +111,6 @@ public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Intege
             cursor.close();
         }
 
-        Log.d("DEBUG", "UpdateDbTask: doInBackground() ended");
         apList = aps[0];
         return aps[0].size();
 
@@ -160,7 +154,6 @@ public class UpdateDbTask extends AsyncTask<ArrayList<AccessPoint>, Void, Intege
 
     protected void onPostExecute(Integer result) {
 
-        Log.d("DEBUG", "UpdateDbTask: onPostExecute()");
         // update map on the ui thread involving only scanned aps
         ArrayList<String> scanResultBssids = new ArrayList<>();
         ArrayList<String> scanResultSsids = new ArrayList<>();

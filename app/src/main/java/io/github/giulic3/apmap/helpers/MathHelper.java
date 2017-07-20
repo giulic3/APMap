@@ -1,7 +1,6 @@
 package io.github.giulic3.apmap.helpers;
 
 import android.database.Cursor;
-import android.util.Log;
 
 import com.google.android.gms.maps.model.LatLng;
 
@@ -16,13 +15,11 @@ public class MathHelper {
     // not very accurate when points are almost aligned
     /** This method takes three LatLng objects and three distances from each point to the point
      * we're trying to determine. Distances in km */
-    //TODO: provare cambiando conversione
 
     public static LatLng getLocationByTrilateration(LatLng location1, double distance1,
                                              LatLng location2, double distance2,
                                              LatLng location3, double distance3){
 
-        Log.d("DEBUG", "UpdateDbTask: getLocationByTrilateration()");
         //DECLARE VARIABLES
 
         double[] P1   = new double[2];

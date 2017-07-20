@@ -12,39 +12,28 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
-import android.util.Log;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.common.api.PendingResult;
-import com.google.android.gms.common.api.ResultCallback;
-import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.LocationSettingsRequest;
-import com.google.android.gms.location.LocationSettingsResult;
-import com.google.android.gms.location.LocationSettingsStates;
-import com.google.android.gms.location.LocationSettingsStatusCodes;
-import com.google.android.gms.maps.CameraUpdateFactory;
-import com.google.android.gms.maps.model.LatLng;
+
 
 import static com.google.android.gms.common.ConnectionResult.NETWORK_ERROR;
 import static com.google.android.gms.common.ConnectionResult.SERVICE_MISSING;
 import static com.google.android.gms.common.ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED;
-import static com.google.android.gms.location.LocationSettingsRequest.*;
 
 public class LocationService extends Service implements LocationListener,
         GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
 
     private Activity activityParameter;
     private Location mLastLocation;
-    private LocationRequest mLocationRequest; //get locationRequest()
+    private LocationRequest mLocationRequest;
     private static Context mContext;
 
     private GoogleApiClient mGoogleApiClient;
-    private static final String LOGSERVICE = "LocationService";
     private static final int LOCATION_REQUEST_INTERVAL = 30000;
 
     // binder given to clients (= mainActivity)
@@ -54,21 +43,18 @@ public class LocationService extends Service implements LocationListener,
     public void onCreate() {
         super.onCreate();
         buildGoogleApiClient();
-        Log.i(LOGSERVICE, "onCreate");
 
         initializeLocationRequest();
 
     }
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.i(LOGSERVICE, "onStartCommand()");
 
         if (!mGoogleApiClient.isConnected())
             mGoogleApiClient.connect();
 
         return START_STICKY;
     }
-
 
 
     // this returns IBinder object to Activity
@@ -91,8 +77,6 @@ public class LocationService extends Service implements LocationListener,
     @Override
     public void onConnected(Bundle connectionHint) {
 
-        Log.d("DEBUG", "LocationService: onConnected()");
-
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
 
@@ -103,17 +87,12 @@ public class LocationService extends Service implements LocationListener,
 
     // starts as callback when connection between GoogleApi and phone is suspended
     @Override
-    public void onConnectionSuspended(int i) {
-
-        Log.d("DEBUG", "LocationService: onConnectionSuspended()");
-    }
+    public void onConnectionSuspended(int i) { }
 
     // starts as callback when phone can't connect to GoogleApiServices, e.g. no GoogleServices are available
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
         // can't test this
-        Log.d("DEBUG", "LocationService: onConnectionFailed()");
-
         int errorCode = connectionResult.getErrorCode();
         switch (errorCode) {
             case SERVICE_MISSING: {
@@ -139,7 +118,6 @@ public class LocationService extends Service implements LocationListener,
     @Override
     public void onLocationChanged(Location location) {
 
-        Log.d("DEBUG", "LocationService: onLocationChanged()");
         mLastLocation = location;
         // notify activity with changed location
         String message = "location just changed";
@@ -152,7 +130,6 @@ public class LocationService extends Service implements LocationListener,
     }
 
     private void initializeLocationRequest(){
-        Log.d("DEBUG", "LocationService: initializeLocationRequest()");
 
         // a locationRequest object must be prepared before asking for permission
         mLocationRequest = LocationRequest.create();
@@ -164,7 +141,6 @@ public class LocationService extends Service implements LocationListener,
     }
 
     protected synchronized void buildGoogleApiClient() {
-        Log.d("DEBUG", "LocationService: buildGoogleApiClient()");
 
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .addOnConnectionFailedListener(this)

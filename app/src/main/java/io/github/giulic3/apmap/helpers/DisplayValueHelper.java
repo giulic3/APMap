@@ -28,10 +28,10 @@ public class DisplayValueHelper {
     public String getReadableSecurityType(String capabilities) {
         if (capabilities.contains("WEP"))
             return "WEP";
-        else if (capabilities.contains("WPA"))
-            return "WPA";
         else if (capabilities.contains("WPA2"))
             return "WPA2";
+        else if (capabilities.contains("WPA"))
+            return "WPA";
         else if (capabilities.contains("ESS"))
             return "ESS";
         else return "open";

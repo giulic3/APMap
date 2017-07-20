@@ -10,8 +10,6 @@ import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.content.LocalBroadcastManager;
-import android.util.Log;
-import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,8 +35,6 @@ public class ApService extends Service {
     @Override
     public void onCreate(){
 
-        Log.d("DEBUG", "ApService: onCreate()");
-
         isServiceAlive = true;
         // setup broadcast receiver
         mWifiReceiver = new WifiReceiver();
@@ -57,8 +53,6 @@ public class ApService extends Service {
                 while(isServiceAlive)
                 {
                     try {
-                        Log.d("DEBUG", "ApService: in thread startScan()");
-
                         Thread.sleep(THREAD_SLEEP);
                         mWifiManager.startScan();
                         SCAN_COUNTER++;
@@ -94,7 +88,6 @@ public class ApService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId){
 
-        Log.d("DEBUG", "ApService: onStartCommand()");
         // used for syncing, the first scan is on the main thread
         mWifiManager.startScan();
         SCAN_COUNTER++;
@@ -120,7 +113,6 @@ public class ApService extends Service {
 
             ArrayList<AccessPoint> apList = new ArrayList<AccessPoint>();
 
-            Log.d("DEBUG", "ApService: onReceive()");
             wifiList = mWifiManager.getScanResults();
 
             for (int i = 0; i < wifiList.size(); i++) {
@@ -129,14 +121,6 @@ public class ApService extends Service {
                         wifiList.get(i).capabilities, wifiList.get(i).frequency,
                         wifiList.get(i).level,
                         wifiList.get(i).timestamp));
-
-
-                Log.i("INFO", "BSSID: " + wifiList.get(i).BSSID + "\n" +
-                        "SSID: " + wifiList.get(i).SSID + "\n" +
-                        "capabilities: " + wifiList.get(i).capabilities + "\n" +
-                        "frequency: " + wifiList.get(i).frequency + "\n" +
-                        "level: " + wifiList.get(i).level + "\n" +
-                        "timestamp: " + wifiList.get(i).timestamp );
 
 
             }
